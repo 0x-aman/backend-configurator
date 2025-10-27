@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Code, Copy, CheckCircle2, ExternalLink, Settings } from "lucide-react";
@@ -24,11 +30,11 @@ export default function EmbedPage() {
       try {
         const response = await fetch("/api/client/me");
         if (response.ok) {
-          const data = await response.json();
+          const { data } = await response.json();
           setClient({
-            publicKey: data.client?.publicKey || "",
-            apiKey: data.client?.apiKey || "",
-            domain: data.client?.domain || null,
+            publicKey: data?.publicKey || "",
+            apiKey: data?.apiKey || "",
+            domain: data?.domain || null,
           });
         }
       } catch (error) {
@@ -48,7 +54,7 @@ export default function EmbedPage() {
   (function() {
     var script = document.createElement('script');
     script.src = '${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/embed.js';
-    script.setAttribute('data-public-key', '${client?.publicKey || 'YOUR_PUBLIC_KEY'}');
+    script.setAttribute('data-public-key', '${client?.publicKey || "YOUR_PUBLIC_KEY"}');
     script.async = true;
     document.body.appendChild(script);
   })();
@@ -64,7 +70,12 @@ export default function EmbedPage() {
   return (
     <div className="p-6 lg:p-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight" data-testid="embed-title">Embed Script</h1>
+        <h1
+          className="text-3xl font-bold tracking-tight"
+          data-testid="embed-title"
+        >
+          Embed Script
+        </h1>
         <p className="text-muted-foreground mt-2">
           Integrate your configurator into any website
         </p>
@@ -78,17 +89,20 @@ export default function EmbedPage() {
               <Code className="h-5 w-5" />
               Quick Start
             </CardTitle>
-            <CardDescription>Copy and paste this script into your website</CardDescription>
+            <CardDescription>
+              Copy and paste this script into your website
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Alert>
               <AlertDescription>
-                Paste this code snippet where you want the configurator to appear on your website.
+                Paste this code snippet where you want the configurator to
+                appear on your website.
               </AlertDescription>
             </Alert>
-            
+
             <div className="relative">
-              <pre 
+              <pre
                 className="p-4 bg-gray-900 text-gray-100 rounded-lg overflow-x-auto text-sm font-mono"
                 data-testid="embed-script"
               >
@@ -121,14 +135,21 @@ export default function EmbedPage() {
         <Card>
           <CardHeader>
             <CardTitle>API Keys</CardTitle>
-            <CardDescription>Your unique identifiers for API access</CardDescription>
+            <CardDescription>
+              Your unique identifiers for API access
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Public Key</label>
               <div className="flex gap-2">
-                <code className="flex-1 p-3 bg-muted rounded-md text-sm font-mono break-all" data-testid="public-key">
-                  {loading ? "Loading..." : client?.publicKey || "Not available"}
+                <code
+                  className="flex-1 p-3 bg-muted rounded-md text-sm font-mono break-all"
+                  data-testid="public-key"
+                >
+                  {loading
+                    ? "Loading..."
+                    : client?.publicKey || "Not available"}
                 </code>
                 <Button
                   size="sm"
@@ -143,21 +164,28 @@ export default function EmbedPage() {
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">Use this key for public embed scripts</p>
+              <p className="text-xs text-muted-foreground">
+                Use this key for public embed scripts
+              </p>
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium">API Key (Secret)</label>
               <div className="flex gap-2">
-                <code className="flex-1 p-3 bg-muted rounded-md text-sm font-mono break-all" data-testid="api-key">
-                  {loading ? "Loading..." : client?.apiKey ? `${client.apiKey.substring(0, 20)}...` : "Not available"}
+                <code
+                  className="flex-1 p-3 bg-muted rounded-md text-sm font-mono break-all"
+                  data-testid="api-key"
+                >
+                  {loading ? "Loading..." : client?.apiKey || "Not available"}
                 </code>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    navigator.clipboard.writeText(client?.apiKey || "");
-                    toast.success("API key copied!");
+                    if (client?.apiKey) {
+                      navigator.clipboard.writeText(client.apiKey);
+                      toast.success("API key copied!");
+                    }
                   }}
                   disabled={!client?.apiKey}
                   data-testid="copy-api-key"
@@ -165,7 +193,9 @@ export default function EmbedPage() {
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">Keep this secret! Use for backend API calls only</p>
+              <p className="text-xs text-muted-foreground">
+                Keep this secret! Use for backend API calls only
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -177,11 +207,14 @@ export default function EmbedPage() {
               <Settings className="h-5 w-5" />
               Configurator Management
             </CardTitle>
-            <CardDescription>Create and customize your product configurators</CardDescription>
+            <CardDescription>
+              Create and customize your product configurators
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Configure your product options, categories, pricing, and themes using our configurator editor.
+              Configure your product options, categories, pricing, and themes
+              using our configurator editor.
             </p>
             <div className="flex gap-4">
               <Button asChild data-testid="edit-configurator-button">
@@ -204,14 +237,17 @@ export default function EmbedPage() {
         <Card>
           <CardHeader>
             <CardTitle>Documentation</CardTitle>
-            <CardDescription>Learn more about embedding and customization</CardDescription>
+            <CardDescription>
+              Learn more about embedding and customization
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-start gap-3 p-3 border rounded-lg hover:bg-accent transition-colors">
               <div className="flex-1">
                 <h4 className="font-medium text-sm">Embedding Guide</h4>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Step-by-step instructions for adding the configurator to your site
+                  Step-by-step instructions for adding the configurator to your
+                  site
                 </p>
               </div>
               <Button size="sm" variant="ghost" asChild>

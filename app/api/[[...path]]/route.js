@@ -1,7 +1,8 @@
 import { v4 as uuidv4 } from "uuid";
 import { NextResponse } from "next/server";
+import { prisma } from "@/src/lib/prisma";
 
-// Helper function to handle CORS
+// --- Helper: Handle CORS ---
 function handleCORS(response) {
   response.headers.set(
     "Access-Control-Allow-Origin",
@@ -19,30 +20,24 @@ function handleCORS(response) {
   return response;
 }
 
-// OPTIONS handler for CORS
+// --- OPTIONS handler for CORS ---
 export async function OPTIONS() {
   return handleCORS(new NextResponse(null, { status: 200 }));
 }
 
-// Route handler function
+// --- Main route handler ---
 async function handleRoute(request, { params }) {
   const { path = [] } = params;
   const route = `/${path.join("/")}`;
   const method = request.method;
 
   try {
-    const db = await connectToMongo();
-
-    // Root endpoint - GET /api/root (since /api/ is not accessible with catch-all)
-    if (route === "/root" && method === "GET") {
-      return handleCORS(NextResponse.json({ message: "Hello World" }));
-    }
-    // Root endpoint - GET /api/root (since /api/ is not accessible with catch-all)
-    if (route === "/" && method === "GET") {
+    // Root endpoint
+    if ((route === "/root" || route === "/") && method === "GET") {
       return handleCORS(NextResponse.json({ message: "Hello World" }));
     }
 
-    // Status endpoints - POST /api/status
+    // POST /api/status — create new status entry
     if (route === "/status" && method === "POST") {
       const body = await request.json();
 
@@ -55,31 +50,28 @@ async function handleRoute(request, { params }) {
         );
       }
 
-      const statusObj = {
-        id: uuidv4(),
-        client_name: body.client_name,
-        timestamp: new Date(),
-      };
+      const newStatus = await prisma.statusCheck.create({
+        data: {
+          id: uuidv4(),
+          client_name: body.client_name,
+          timestamp: new Date(),
+        },
+      });
 
-      await db.collection("status_checks").insertOne(statusObj);
-      return handleCORS(NextResponse.json(statusObj));
+      return handleCORS(NextResponse.json(newStatus));
     }
 
-    // Status endpoints - GET /api/status
+    // GET /api/status — list status entries
     if (route === "/status" && method === "GET") {
-      const statusChecks = await db
-        .collection("status_checks")
-        .find({})
-        .limit(1000)
-        .toArray();
+      const statusChecks = await prisma.statusCheck.findMany({
+        orderBy: { timestamp: "desc" },
+        take: 1000,
+      });
 
-      // Remove MongoDB's _id field from response
-      const cleanedStatusChecks = statusChecks.map(({ _id, ...rest }) => rest);
-
-      return handleCORS(NextResponse.json(cleanedStatusChecks));
+      return handleCORS(NextResponse.json(statusChecks));
     }
 
-    // Route not found
+    // Default 404
     return handleCORS(
       NextResponse.json({ error: `Route ${route} not found` }, { status: 404 })
     );
@@ -91,7 +83,7 @@ async function handleRoute(request, { params }) {
   }
 }
 
-// Export all HTTP methods
+// --- Export HTTP methods ---
 export const GET = handleRoute;
 export const POST = handleRoute;
 export const PUT = handleRoute;

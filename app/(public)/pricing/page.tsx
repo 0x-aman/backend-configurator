@@ -1,9 +1,16 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Check, ArrowLeft } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function PricingPage() {
   const plans = [
@@ -47,61 +54,82 @@ export default function PricingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+      <nav className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
+            <Link
+              href="/"
+              className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
               <ArrowLeft className="h-4 w-4" />
               Back to home
             </Link>
             <div className="flex items-center gap-4">
               <Link href="/login">
-                <Button variant="ghost" size="sm">Log in</Button>
+                <Button variant="ghost" size="sm">
+                  Log in
+                </Button>
               </Link>
               <Link href="/register">
-                <Button size="sm" data-testid="nav-signup-button">Get Started</Button>
+                <Button size="sm" data-testid="nav-signup-button">
+                  Get Started
+                </Button>
               </Link>
             </div>
           </div>
         </div>
       </nav>
 
-      <div className="container mx-auto px-4 py-16 max-w-6xl">
+      <div className="container mx-auto px-4 py-16 max-w-7xl">
         {/* Header */}
         <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4" data-testid="pricing-title">
+          <h1
+            className="text-4xl md:text-5xl font-bold mb-4"
+            data-testid="pricing-title"
+          >
             Simple, transparent pricing
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Choose the billing cycle that works best for you. All plans include full access to all features.
+            Choose the plan that works best for you. All plans include full
+            access to core features.
           </p>
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-2 gap-8 mb-16 max-w-4xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-8 mb-16 max-w-6xl mx-auto">
           {plans.map((plan) => (
-            <Card 
-              key={plan.duration} 
-              className={`relative ${plan.popular ? "border-primary shadow-xl scale-105" : ""}`}
+            <Card
+              key={plan.duration}
+              className={`relative glass ${plan.popular ? "border-primary shadow-xl scale-105" : ""}`}
               data-testid={`pricing-card-${plan.duration}`}
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <Badge className="bg-primary text-primary-foreground px-4 py-1">Most Popular</Badge>
+                  <Badge className="bg-primary text-primary-foreground px-4 py-1">
+                    Most Popular
+                  </Badge>
                 </div>
               )}
               <CardHeader className="text-center pb-8 pt-8">
                 <CardTitle className="text-2xl mb-2">{plan.name}</CardTitle>
                 <div className="mb-2">
-                  <span className="text-5xl font-bold" data-testid={`price-${plan.duration}`}>{plan.price}</span>
-                  <span className="text-muted-foreground ml-2">{plan.period}</span>
+                  <span
+                    className="text-5xl font-bold"
+                    data-testid={`price-${plan.duration}`}
+                  >
+                    {plan.price}
+                  </span>
+                  {plan.price !== "Custom" && (
+                    <span className="text-muted-foreground ml-2">
+                      {plan.period}
+                    </span>
+                  )}
                 </div>
-                <CardDescription className="text-base">{plan.description}</CardDescription>
-                {plan.savings && (
-                  <Badge variant="secondary" className="mt-2">{plan.savings}</Badge>
-                )}
+                <CardDescription className="text-base">
+                  {plan.description}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <Separator />
@@ -114,13 +142,15 @@ export default function PricingPage() {
                   ))}
                 </ul>
                 <Link href="/register">
-                  <Button 
-                    className="w-full" 
+                  <Button
+                    className="w-full"
                     size="lg"
                     variant={plan.popular ? "default" : "outline"}
                     data-testid={`select-plan-${plan.duration}`}
                   >
-                    Get Started with {plan.name}
+                    {plan.price === "Custom"
+                      ? "Contact Sales"
+                      : `Get Started with ${plan.name}`}
                   </Button>
                 </Link>
               </CardContent>
@@ -130,55 +160,59 @@ export default function PricingPage() {
 
         {/* FAQ Section */}
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">Frequently Asked Questions</h2>
+          <h2 className="text-3xl font-bold text-center mb-12">
+            Frequently Asked Questions
+          </h2>
           <div className="space-y-6">
-            <Card>
+            <Card className="glass">
               <CardHeader>
-                <CardTitle className="text-lg">Can I switch plans later?</CardTitle>
+                <CardTitle className="text-lg">
+                  Can I switch plans later?
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  Yes! You can upgrade or downgrade your plan at any time. When upgrading, you'll be charged a prorated amount. When downgrading, your new rate will apply at the next billing cycle.
+                  Yes! You can upgrade or downgrade your plan at any time. When
+                  upgrading, you'll be charged a prorated amount. When
+                  downgrading, your new rate will apply at the next billing
+                  cycle.
                 </p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="glass">
               <CardHeader>
-                <CardTitle className="text-lg">What payment methods do you accept?</CardTitle>
+                <CardTitle className="text-lg">
+                  What payment methods do you accept?
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  We accept all major credit cards (Visa, Mastercard, American Express) via Stripe's secure payment processing.
+                  We accept all major credit cards (Visa, Mastercard, American
+                  Express) via Stripe's secure payment processing.
                 </p>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Is there a free trial?</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Yes! All new accounts start with a 14-day free trial with full access to all features. No credit card required to start.
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
+            <Card className="glass">
               <CardHeader>
                 <CardTitle className="text-lg">Can I cancel anytime?</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  Absolutely. You can cancel your subscription at any time from your billing dashboard. Your account will remain active until the end of your current billing period.
+                  Absolutely. You can cancel your subscription at any time from
+                  your billing dashboard. Your account will remain active until
+                  the end of your current billing period.
                 </p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="glass">
               <CardHeader>
                 <CardTitle className="text-lg">Do you offer refunds?</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  We offer a 30-day money-back guarantee. If you're not satisfied with Brillance, contact us within 30 days of your purchase for a full refund.
+                  We offer a 30-day money-back guarantee. If you're not
+                  satisfied with KONFIGRA, contact us within 30 days of your
+                  purchase for a full refund.
                 </p>
               </CardContent>
             </Card>
@@ -192,10 +226,20 @@ export default function PricingPage() {
             Contact our sales team for enterprise pricing and custom features
           </p>
           <Button variant="outline" size="lg" asChild>
-            <a href="mailto:sales@brillance.com">Contact Sales</a>
+            <a href="mailto:sales@konfigra.com">Contact Sales</a>
           </Button>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="border-t border-border/40 py-8 px-4">
+        <div className="container mx-auto max-w-6xl flex justify-between items-center">
+          <p className="text-sm text-muted-foreground">
+            &copy; 2025 KONFIGRA. All rights reserved.
+          </p>
+          <ThemeToggle />
+        </div>
+      </footer>
     </div>
   );
 }
