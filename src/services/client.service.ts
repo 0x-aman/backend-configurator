@@ -1,9 +1,9 @@
 // Client service
-import { prisma } from '@/src/lib/prisma';
-import { hashPassword } from '@/src/lib/auth';
-import { generateApiKey, generatePublicKey } from '@/src/lib/api-keys';
-import { NotFoundError, ConflictError } from '@/src/lib/errors';
-import type { Client, SubscriptionPlan } from '@prisma/client';
+import { prisma } from "@/src/lib/prisma";
+import { hashPassword } from "@/src/lib/auth";
+import { generateApiKey, generatePublicKey } from "@/src/lib/api-keys";
+import { NotFoundError, ConflictError } from "@/src/lib/errors";
+import type { Client, SubscriptionPlan } from "@prisma/client";
 
 export const ClientService = {
   async create(data: {
@@ -18,10 +18,12 @@ export const ClientService = {
     });
 
     if (existing) {
-      throw new ConflictError('Email already registered');
+      throw new ConflictError("Email already registered");
     }
 
-    const passwordHash = data.password ? await hashPassword(data.password) : undefined;
+    const passwordHash = data.password
+      ? await hashPassword(data.password)
+      : undefined;
 
     return await prisma.client.create({
       data: {
@@ -30,8 +32,8 @@ export const ClientService = {
         name: data.name,
         companyName: data.companyName,
         googleId: data.googleId,
-        apiKey: generateApiKey('sk'),
-        publicKey: generatePublicKey('pk'),
+        apiKey: generateApiKey("sk"),
+        publicKey: generatePublicKey("pk"),
         emailVerified: !!data.googleId, // Auto-verify OAuth users
       },
     });
@@ -39,7 +41,7 @@ export const ClientService = {
 
   async getById(id: string): Promise<Client> {
     const client = await prisma.client.findUnique({ where: { id } });
-    if (!client) throw new NotFoundError('Client');
+    if (!client) throw new NotFoundError("Client");
     return client;
   },
 
@@ -103,14 +105,14 @@ export const ClientService = {
   async regenerateApiKey(id: string): Promise<Client> {
     return await prisma.client.update({
       where: { id },
-      data: { apiKey: generateApiKey('sk') },
+      data: { apiKey: generateApiKey("sk") },
     });
   },
 
   async regeneratePublicKey(id: string): Promise<Client> {
     return await prisma.client.update({
       where: { id },
-      data: { publicKey: generatePublicKey('pk') },
+      data: { publicKey: generatePublicKey("pk") },
     });
   },
 
@@ -119,6 +121,7 @@ export const ClientService = {
   },
 
   async getSafeClient(id: string) {
+    console.log(id, "id");
     const client = await this.getById(id);
     const { passwordHash, resetToken, emailVerifyToken, ...safe } = client;
     return safe;

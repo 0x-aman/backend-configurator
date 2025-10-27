@@ -1,8 +1,8 @@
 // Get current client profile
-import { NextRequest } from 'next/server';
-import { authenticateRequest } from '@/src/middleware/auth';
-import { ClientService } from '@/src/services/client.service';
-import { success, fail } from '@/src/lib/response';
+import { NextRequest } from "next/server";
+import { authenticateRequest } from "@/src/middleware/auth";
+import { ClientService } from "@/src/services/client.service";
+import { success, fail } from "@/src/lib/response";
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,6 +11,6 @@ export async function GET(request: NextRequest) {
 
     return success(safeClient);
   } catch (error: any) {
-    return fail(error.message, 'CLIENT_ERROR', error.statusCode || 500);
+    return fail(error.message, "CLIENT_ERROR", error.statusCode || 500);
   }
 }

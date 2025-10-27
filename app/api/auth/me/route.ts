@@ -1,8 +1,8 @@
 // Get current user endpoint
-import { NextRequest } from 'next/server';
-import { authenticateRequest } from '@/src/middleware/auth';
-import { ClientService } from '@/src/services/client.service';
-import { success, fail, unauthorized } from '@/src/lib/response';
+import { NextRequest } from "next/server";
+import { authenticateRequest } from "@/src/middleware/auth";
+import { ClientService } from "@/src/services/client.service";
+import { success, fail, unauthorized } from "@/src/lib/response";
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,6 +14,6 @@ export async function GET(request: NextRequest) {
     if (error.statusCode === 401) {
       return unauthorized(error.message);
     }
-    return fail(error.message, 'AUTH_ERROR', 500);
+    return fail(error.message, "AUTH_ERROR", 500);
   }
 }

@@ -1,17 +1,20 @@
 // Authentication utilities
-import { compare, hash } from 'bcryptjs';
-import { sign, verify } from 'jsonwebtoken';
-import { env } from '@/src/config/env';
-import { Client } from '@prisma/client';
+import { compare, hash } from "bcryptjs";
+import { sign, verify } from "jsonwebtoken";
+import { env } from "@/src/config/env";
+import { Client } from "@prisma/client";
 
-const JWT_SECRET = env.NEXTAUTH_SECRET || 'fallback-secret-change-this';
-const JWT_EXPIRES_IN = '7d';
+const JWT_SECRET = process.env.NEXTAUTH_SECRET || "";
+const JWT_EXPIRES_IN = "8WEEKS";
 
 export async function hashPassword(password: string): Promise<string> {
   return await hash(password, 12);
 }
 
-export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
+export async function verifyPassword(
+  password: string,
+  hashedPassword: string
+): Promise<boolean> {
   return await compare(password, hashedPassword);
 }
 
@@ -29,15 +32,22 @@ export function generateJWT(client: Partial<Client>): string {
 
 export function verifyJWT(token: string): any {
   try {
+    // Basic JWT format check: three dot-separated parts
+    if (!token || typeof token !== "string" || token.split(".").length !== 3) {
+      console.log("Malformed JWT token", token);
+      return null;
+    }
+    // Remove debug log for production
     return verify(token, JWT_SECRET);
   } catch (error) {
+    console.log(error, "error");
     return null;
   }
 }
 
 export function extractToken(authHeader?: string | null): string | null {
   if (!authHeader) return null;
-  if (authHeader.startsWith('Bearer ')) {
+  if (authHeader.startsWith("Bearer ")) {
     return authHeader.substring(7);
   }
   return authHeader;

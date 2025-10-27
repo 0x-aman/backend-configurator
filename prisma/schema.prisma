@@ -21,11 +21,9 @@ enum SubscriptionStatus {
   SUSPENDED
 }
 
-enum SubscriptionPlan {
-  FREE
-  STARTER
-  PRO
-  ENTERPRISE
+enum SubscriptionDuration {
+  MONTHLY
+  YEARLY
 }
 
 enum CategoryType {
@@ -88,67 +86,70 @@ enum AnalyticsEventType {
 // ================================
 
 model Client {
-  id                String              @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Authentication & Profile
-  email             String              @unique
-  passwordHash      String?
-  name              String
-  companyName       String?
-  avatarUrl         String?
-  phone             String?
-  
+  email        String  @unique
+  passwordHash String?
+  name         String
+  companyName  String?
+  avatarUrl    String?
+  phone        String?
+
   // OAuth
-  googleId          String?             @unique
-  
+  googleId String? @unique
+
   // Email Verification
-  emailVerified     Boolean             @default(false)
+  emailVerified     Boolean   @default(false)
   emailVerifyToken  String?
   emailVerifySentAt DateTime?
-  
+
   // Password Reset
   resetToken        String?
   resetTokenExpires DateTime?
-  
+
   // Billing & Subscription
-  subscriptionStatus SubscriptionStatus @default(TRIALING)
-  subscriptionPlan   SubscriptionPlan   @default(FREE)
-  stripeCustomerId   String?            @unique
-  stripeSubscriptionId String?          @unique
-  trialEndsAt        DateTime?
-  subscriptionEndsAt DateTime?
-  billingEmail       String?
-  
+  subscriptionStatus   SubscriptionStatus    @default(TRIALING)
+  subscriptionDuration SubscriptionDuration?
+  stripeCustomerId     String?               @unique
+  stripeSubscriptionId String?               @unique
+  stripePriceId        String?
+  trialEndsAt          DateTime?
+  subscriptionEndsAt   DateTime?
+  billingEmail         String?
+  monthlyPrice         Decimal               @default(99.00) @db.Decimal(10, 2)
+  yearlyPrice          Decimal               @default(999.00) @db.Decimal(10, 2)
+
   // API & Embedding
-  apiKey            String              @unique @default(cuid())
-  publicKey         String              @unique @default(cuid())
-  domain            String?
-  allowedDomains    String[]            @default([])
-  embedSettings     Json?
-  
+  apiKey         String   @unique @default(cuid())
+  publicKey      String   @unique @default(cuid())
+  domain         String?
+  allowedDomains String[] @default([])
+  embedSettings  Json?
+
   // Usage Limits & Analytics
-  monthlyRequests   Int                 @default(0)
-  requestLimit      Int                 @default(1000)
-  lastResetAt       DateTime?           @default(now())
-  
+  monthlyRequests Int       @default(0)
+  requestLimit    Int       @default(1000)
+  lastResetAt     DateTime? @default(now())
+
   // Security
-  lastLoginAt       DateTime?
-  lastLoginIp       String?
-  failedLoginAttempts Int              @default(0)
-  lockedUntil       DateTime?
-  
+  lastLoginAt         DateTime?
+  lastLoginIp         String?
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+
   // Relations
-  configurators     Configurator[]
-  themes            Theme[]
-  emailTemplates    EmailTemplate[]
-  quotes            Quote[]
-  files             File[]
-  analyticsEvents   AnalyticsEvent[]
-  
+  configurators   Configurator[]
+  themes          Theme[]
+  emailTemplates  EmailTemplate[]
+  quotes          Quote[]
+  files           File[]
+  analyticsEvents AnalyticsEvent[]
+
   // Audit
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([email])
   @@index([apiKey])
   @@index([publicKey])
@@ -162,54 +163,54 @@ model Client {
 // ================================
 
 model Configurator {
-  id            String    @id @default(cuid())
-  clientId      String
-  publicId      String    @unique @default(cuid())
-  
+  id       String @id @default(cuid())
+  clientId String
+  publicId String @unique @default(cuid())
+
   // Basic Info
-  name          String    @default("Product Configurator")
-  description   String?   @db.Text
-  slug          String?   @unique
-  
+  name        String  @default("Product Configurator")
+  description String? @db.Text
+  slug        String? @unique
+
   // Status & Visibility
-  isActive      Boolean   @default(true)
-  isPublished   Boolean   @default(false)
-  publishedAt   DateTime?
-  
+  isActive    Boolean   @default(true)
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+
   // Configuration Settings
-  themeId       String?
-  currency      String    @default("USD")
-  currencySymbol String   @default("$")
-  language      String    @default("en")
-  timezone      String    @default("UTC")
-  
+  themeId        String?
+  currency       String  @default("USD")
+  currencySymbol String  @default("$")
+  language       String  @default("en")
+  timezone       String  @default("UTC")
+
   // SEO & Social
-  metaTitle     String?
+  metaTitle       String?
   metaDescription String? @db.Text
-  ogImage       String?
-  
+  ogImage         String?
+
   // Behavior Settings
-  allowQuotes   Boolean   @default(true)
-  requireEmail  Boolean   @default(true)
-  autoPricing   Boolean   @default(false)
-  showTotal     Boolean   @default(true)
-  
+  allowQuotes  Boolean @default(true)
+  requireEmail Boolean @default(true)
+  autoPricing  Boolean @default(false)
+  showTotal    Boolean @default(true)
+
   // Access Control
-  password      String?
-  accessToken   String?   @unique @default(cuid())
-  
+  password    String?
+  accessToken String? @unique @default(cuid())
+
   // Relations
-  client        Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  theme         Theme?      @relation(fields: [themeId], references: [id], onDelete: SetNull)
-  categories    Category[]
-  quotes        Quote[]
-  analytics     AnalyticsEvent[]
-  
+  client     Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  theme      Theme?           @relation(fields: [themeId], references: [id], onDelete: SetNull)
+  categories Category[]
+  quotes     Quote[]
+  analytics  AnalyticsEvent[]
+
   // Audit
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
   lastAccessedAt DateTime?
-  
+
   @@index([clientId])
   @@index([publicId])
   @@index([isActive, isPublished])
@@ -223,44 +224,44 @@ model Configurator {
 // ================================
 
 model Category {
-  id              String        @id @default(cuid())
-  configuratorId  String
-  
+  id             String @id @default(cuid())
+  configuratorId String
+
   // Basic Info
-  name            String
-  categoryType    CategoryType  @default(GENERIC)
-  description     String?       @db.Text
-  helpText        String?       @db.Text
-  
+  name         String
+  categoryType CategoryType @default(GENERIC)
+  description  String?      @db.Text
+  helpText     String?      @db.Text
+
   // Display Settings
-  isPrimary       Boolean       @default(false)
-  isRequired      Boolean       @default(false)
-  orderIndex      Int           @default(0)
-  icon            String?
-  imageUrl        String?
-  
+  isPrimary  Boolean @default(false)
+  isRequired Boolean @default(false)
+  orderIndex Int     @default(0)
+  icon       String?
+  imageUrl   String?
+
   // Default Option
   defaultOptionId String?
-  
+
   // Attribute System
-  attributesTemplate Json       @default("[]")
-  
+  attributesTemplate Json @default("[]")
+
   // Validation Rules
   validationRules Json?
-  minSelections   Int           @default(1)
-  maxSelections   Int           @default(1)
-  
+  minSelections   Int   @default(1)
+  maxSelections   Int   @default(1)
+
   // Pricing Rules
-  pricingFormula  String?
-  
+  pricingFormula String?
+
   // Relations
-  configurator    Configurator  @relation(fields: [configuratorId], references: [id], onDelete: Cascade)
-  options         Option[]
-  
+  configurator Configurator @relation(fields: [configuratorId], references: [id], onDelete: Cascade)
+  options      Option[]
+
   // Audit
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([configuratorId])
   @@index([configuratorId, orderIndex])
   @@index([categoryType])
@@ -272,63 +273,63 @@ model Category {
 // ================================
 
 model Option {
-  id              String    @id @default(cuid())
-  categoryId      String
-  
+  id         String @id @default(cuid())
+  categoryId String
+
   // Basic Info
-  label           String
-  description     String?   @db.Text
-  sku             String?
-  price           Decimal   @db.Decimal(10, 2)
-  cost            Decimal?  @db.Decimal(10, 2)
-  
+  label       String
+  description String?  @db.Text
+  sku         String?
+  price       Decimal  @db.Decimal(10, 2)
+  cost        Decimal? @db.Decimal(10, 2)
+
   // Media
-  imageUrl        String?
-  thumbnailUrl    String?
-  gallery         String[]  @default([])
-  
+  imageUrl     String?
+  thumbnailUrl String?
+  gallery      String[] @default([])
+
   // Display Settings
-  orderIndex      Int       @default(0)
-  isActive        Boolean   @default(true)
-  isDefault       Boolean   @default(false)
-  isPopular       Boolean   @default(false)
-  
+  orderIndex Int     @default(0)
+  isActive   Boolean @default(true)
+  isDefault  Boolean @default(false)
+  isPopular  Boolean @default(false)
+
   // Stock & Availability
-  inStock         Boolean   @default(true)
-  stockQuantity   Int?
+  inStock           Boolean @default(true)
+  stockQuantity     Int?
   lowStockThreshold Int?    @default(10)
-  
+
   // Attribute Values
-  attributeValues Json      @default("{}")
-  
+  attributeValues Json @default("{}")
+
   // Legacy/Specific Fields
-  color           String?
-  hexColor        String?
-  dimensions      Json?
-  weight          Decimal?  @db.Decimal(10, 2)
-  voltage         String?
-  wattage         String?
-  materialType    String?
-  finishType      String?
-  textValue       String?
-  maxCharacters   Int?
-  extraData       Json?
-  
+  color         String?
+  hexColor      String?
+  dimensions    Json?
+  weight        Decimal? @db.Decimal(10, 2)
+  voltage       String?
+  wattage       String?
+  materialType  String?
+  finishType    String?
+  textValue     String?
+  maxCharacters Int?
+  extraData     Json?
+
   // Relations
-  category        Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
   // Incompatibility
   incompatibleWith OptionIncompatibility[] @relation("OptionIncompatible")
   incompatibleBy   OptionIncompatibility[] @relation("IncompatibleOption")
-  
+
   // Dependencies
-  dependencies    OptionDependency[] @relation("OptionDependsOn")
-  dependedBy      OptionDependency[] @relation("DependsOnOption")
-  
+  dependencies OptionDependency[] @relation("OptionDependsOn")
+  dependedBy   OptionDependency[] @relation("DependsOnOption")
+
   // Audit
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([categoryId])
   @@index([categoryId, orderIndex])
   @@index([isActive])
@@ -342,17 +343,17 @@ model Option {
 // ================================
 
 model OptionIncompatibility {
-  id                    String   @id @default(cuid())
-  optionId              String
-  incompatibleOptionId  String
-  severity              String   @default("error")
-  message               String?
-  
-  option                Option   @relation("OptionIncompatible", fields: [optionId], references: [id], onDelete: Cascade)
-  incompatibleOption    Option   @relation("IncompatibleOption", fields: [incompatibleOptionId], references: [id], onDelete: Cascade)
-  
-  createdAt             DateTime @default(now())
-  
+  id                   String  @id @default(cuid())
+  optionId             String
+  incompatibleOptionId String
+  severity             String  @default("error")
+  message              String?
+
+  option             Option @relation("OptionIncompatible", fields: [optionId], references: [id], onDelete: Cascade)
+  incompatibleOption Option @relation("IncompatibleOption", fields: [incompatibleOptionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
   @@unique([optionId, incompatibleOptionId])
   @@index([optionId])
   @@index([incompatibleOptionId])
@@ -364,16 +365,16 @@ model OptionIncompatibility {
 // ================================
 
 model OptionDependency {
-  id              String   @id @default(cuid())
-  optionId        String
+  id                String @id @default(cuid())
+  optionId          String
   dependsOnOptionId String
-  dependencyType  String   @default("requires")
-  
-  option          Option   @relation("OptionDependsOn", fields: [optionId], references: [id], onDelete: Cascade)
-  dependsOnOption Option   @relation("DependsOnOption", fields: [dependsOnOptionId], references: [id], onDelete: Cascade)
-  
-  createdAt       DateTime @default(now())
-  
+  dependencyType    String @default("requires")
+
+  option          Option @relation("OptionDependsOn", fields: [optionId], references: [id], onDelete: Cascade)
+  dependsOnOption Option @relation("DependsOnOption", fields: [dependsOnOptionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
   @@unique([optionId, dependsOnOptionId])
   @@index([optionId])
   @@index([dependsOnOptionId])
@@ -385,14 +386,14 @@ model OptionDependency {
 // ================================
 
 model Theme {
-  id              String        @id @default(cuid())
-  clientId        String
-  
+  id       String @id @default(cuid())
+  clientId String
+
   // Theme Info
-  name            String
-  description     String?       @db.Text
-  isDefault       Boolean       @default(false)
-  
+  name        String
+  description String? @db.Text
+  isDefault   Boolean @default(false)
+
   // Color Scheme
   primaryColor    String        @default("220 70% 50%")
   secondaryColor  String        @default("340 70% 50%")
@@ -402,31 +403,31 @@ model Theme {
   textColor       String        @default("0 0% 10%")
   textColorMode   TextColorMode @default(AUTO)
   customTextColor String?
-  
+
   // Typography
-  fontFamily      String        @default("Inter, sans-serif")
-  headingFont     String?
-  bodyFont        String?
-  
+  fontFamily  String  @default("Inter, sans-serif")
+  headingFont String?
+  bodyFont    String?
+
   // Layout
-  borderRadius    String        @default("0.5rem")
-  spacingUnit     String        @default("1rem")
-  maxWidth        String        @default("1200px")
-  
+  borderRadius String @default("0.5rem")
+  spacingUnit  String @default("1rem")
+  maxWidth     String @default("1200px")
+
   // Custom CSS
-  customCSS       String?       @db.Text
-  
+  customCSS String? @db.Text
+
   // Status
-  isActive        Boolean       @default(true)
-  
+  isActive Boolean @default(true)
+
   // Relations
-  client          Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  configurators   Configurator[]
-  
+  client        Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  configurators Configurator[]
+
   // Audit
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([clientId])
   @@index([clientId, isActive])
   @@index([isDefault])
@@ -438,30 +439,30 @@ model Theme {
 // ================================
 
 model EmailTemplate {
-  id                  String   @id @default(cuid())
-  clientId            String
-  
+  id       String @id @default(cuid())
+  clientId String
+
   // Template Info
-  name                String
-  subject             String
-  body                String   @db.Text
-  previewText         String?  @db.Text
-  
+  name        String
+  subject     String
+  body        String  @db.Text
+  previewText String? @db.Text
+
   // Theme & Styling
-  inheritThemeColors  Boolean  @default(true)
-  templateType        String   @default("quote")
-  
+  inheritThemeColors Boolean @default(true)
+  templateType       String  @default("quote")
+
   // Metadata
-  isDefault           Boolean  @default(false)
-  isActive            Boolean  @default(true)
-  
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+
   // Relations
-  client              Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
   // Audit
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([clientId, name])
   @@index([clientId])
   @@index([clientId, isDefault])
@@ -474,51 +475,51 @@ model EmailTemplate {
 // ================================
 
 model Quote {
-  id              String      @id @default(cuid())
-  clientId        String
-  configuratorId  String?
-  
+  id             String  @id @default(cuid())
+  clientId       String
+  configuratorId String?
+
   // Customer Info
   customerEmail   String
   customerName    String?
   customerPhone   String?
   customerCompany String?
   customerAddress Json?
-  
+
   // Configuration Snapshot
   title           String?
   selectedOptions Json
   configuration   Json?
-  totalPrice      Decimal     @db.Decimal(10, 2)
-  subtotal        Decimal?    @db.Decimal(10, 2)
-  taxRate         Decimal?    @db.Decimal(5, 4)
-  taxAmount       Decimal?    @db.Decimal(10, 2)
-  
+  totalPrice      Decimal  @db.Decimal(10, 2)
+  subtotal        Decimal? @db.Decimal(10, 2)
+  taxRate         Decimal? @db.Decimal(5, 4)
+  taxAmount       Decimal? @db.Decimal(10, 2)
+
   // Quote Details
-  quoteCode       String      @unique @default(cuid())
-  status          QuoteStatus @default(PENDING)
-  internalNotes   String?     @db.Text
-  customerNotes   String?     @db.Text
-  adminNotes      String?     @db.Text
-  
+  quoteCode     String      @unique @default(cuid())
+  status        QuoteStatus @default(PENDING)
+  internalNotes String?     @db.Text
+  customerNotes String?     @db.Text
+  adminNotes    String?     @db.Text
+
   // Validity & Expiry
-  validUntil      DateTime?
-  expiresAt       DateTime?
-  
+  validUntil DateTime?
+  expiresAt  DateTime?
+
   // Email Tracking
-  emailSentAt     DateTime?
+  emailSentAt        DateTime?
   lastReminderSentAt DateTime?
-  openCount       Int         @default(0)
-  lastOpenedAt    DateTime?
-  
+  openCount          Int       @default(0)
+  lastOpenedAt       DateTime?
+
   // Relations
-  client          Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  configurator    Configurator? @relation(fields: [configuratorId], references: [id], onDelete: SetNull)
-  
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  configurator Configurator? @relation(fields: [configuratorId], references: [id], onDelete: SetNull)
+
   // Audit
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([clientId])
   @@index([configuratorId])
   @@index([customerEmail])
@@ -534,34 +535,34 @@ model Quote {
 // ================================
 
 model File {
-  id              String   @id @default(cuid())
-  clientId        String
-  
+  id       String @id @default(cuid())
+  clientId String
+
   // File Info
-  filename        String
-  originalName    String
-  fileType        FileType
-  mimeType        String
-  size            Int
-  key             String
-  url             String
-  
+  filename     String
+  originalName String
+  fileType     FileType
+  mimeType     String
+  size         Int
+  key          String
+  url          String
+
   // Metadata
-  altText         String?
-  caption         String?
-  metadata        Json?
-  
+  altText  String?
+  caption  String?
+  metadata Json?
+
   // Access Control
-  isPublic        Boolean  @default(false)
-  accessToken     String?  @unique @default(cuid())
-  
+  isPublic    Boolean @default(false)
+  accessToken String? @unique @default(cuid())
+
   // Relations
-  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
   // Audit
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([clientId])
   @@index([fileType])
   @@index([isPublic])
@@ -574,37 +575,37 @@ model File {
 // ================================
 
 model AnalyticsEvent {
-  id              String            @id @default(cuid())
-  clientId        String
-  configuratorId  String?
-  
+  id             String  @id @default(cuid())
+  clientId       String
+  configuratorId String?
+
   // Event Info
-  eventType       AnalyticsEventType
-  eventName       String
-  sessionId       String?
-  
+  eventType AnalyticsEventType
+  eventName String
+  sessionId String?
+
   // User & Device Info
-  userAgent       String?
-  ipAddress       String?
-  country         String?
-  region          String?
-  city            String?
-  
+  userAgent String?
+  ipAddress String?
+  country   String?
+  region    String?
+  city      String?
+
   // Page & Referrer
-  path            String?
-  referrer        String?
-  domain          String?
-  
+  path     String?
+  referrer String?
+  domain   String?
+
   // Event Data
-  metadata        Json?
-  
+  metadata Json?
+
   // Relations
-  client          Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  configurator    Configurator?     @relation(fields: [configuratorId], references: [id], onDelete: SetNull)
-  
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  configurator Configurator? @relation(fields: [configuratorId], references: [id], onDelete: SetNull)
+
   // Timestamps
-  createdAt       DateTime          @default(now())
-  
+  createdAt DateTime @default(now())
+
   @@index([clientId])
   @@index([configuratorId])
   @@index([eventType])
@@ -618,32 +619,32 @@ model AnalyticsEvent {
 // ================================
 
 model ApiLog {
-  id              String   @id @default(cuid())
-  clientId        String?
-  
+  id       String  @id @default(cuid())
+  clientId String?
+
   // Request Info
-  method          String
-  path            String
-  statusCode      Int
-  userAgent       String?
-  ipAddress       String?
-  
+  method     String
+  path       String
+  statusCode Int
+  userAgent  String?
+  ipAddress  String?
+
   // Performance
-  responseTime    Int
-  requestSize     Int?
-  responseSize    Int?
-  
+  responseTime Int
+  requestSize  Int?
+  responseSize Int?
+
   // Authentication
-  apiKeyId        String?
-  userId          String?
-  
+  apiKeyId String?
+  userId   String?
+
   // Error Tracking
-  errorMessage    String?
-  errorStack      String?
-  
+  errorMessage String?
+  errorStack   String?
+
   // Timestamps
-  createdAt       DateTime @default(now())
-  
+  createdAt DateTime @default(now())
+
   @@index([clientId])
   @@index([method])
   @@index([statusCode])

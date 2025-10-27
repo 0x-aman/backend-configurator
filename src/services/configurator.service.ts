@@ -1,9 +1,9 @@
 // Configurator service
-import { prisma } from '@/src/lib/prisma';
-import { slugify, uniqueSlug } from '@/src/utils/slugify';
-import { generateAccessToken } from '@/src/utils/id';
-import { NotFoundError, AuthorizationError } from '@/src/lib/errors';
-import type { Configurator } from '@prisma/client';
+import { prisma } from "@/src/lib/prisma";
+import { slugify, uniqueSlug } from "@/src/utils/slugify";
+import { generateAccessToken } from "@/src/utils/id";
+import { NotFoundError, AuthorizationError } from "@/src/lib/errors";
+import type { Configurator } from "@prisma/client";
 
 export const ConfiguratorService = {
   async create(
@@ -39,7 +39,7 @@ export const ConfiguratorService = {
   async list(clientId: string): Promise<Configurator[]> {
     return await prisma.configurator.findMany({
       where: { clientId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       include: {
         theme: true,
         categories: {
@@ -56,15 +56,15 @@ export const ConfiguratorService = {
         theme: true,
         categories: {
           include: { options: true },
-          orderBy: { orderIndex: 'asc' },
+          orderBy: { orderIndex: "asc" },
         },
       },
     });
 
-    if (!configurator) throw new NotFoundError('Configurator');
+    if (!configurator) throw new NotFoundError("Configurator");
 
     if (clientId && configurator.clientId !== clientId) {
-      throw new AuthorizationError('Access denied');
+      throw new AuthorizationError("Access denied");
     }
 
     return configurator;
@@ -76,20 +76,20 @@ export const ConfiguratorService = {
       include: {
         theme: true,
         categories: {
-          where: { isPrimary: true },
           include: {
             options: {
               where: { isActive: true },
-              orderBy: { orderIndex: 'asc' },
+              orderBy: { orderIndex: "asc" },
             },
           },
-          orderBy: { orderIndex: 'asc' },
+          orderBy: { orderIndex: "asc" },
         },
       },
     });
 
-    if (!configurator) throw new NotFoundError('Configurator');
-    if (!configurator.isPublished) throw new AuthorizationError('Configurator not published');
+    if (!configurator) throw new NotFoundError("Configurator");
+    if (!configurator.isPublished)
+      throw new AuthorizationError("Configurator not published");
 
     return configurator;
   },
@@ -101,16 +101,20 @@ export const ConfiguratorService = {
         theme: true,
         categories: {
           include: { options: true },
-          orderBy: { orderIndex: 'asc' },
+          orderBy: { orderIndex: "asc" },
         },
       },
     });
 
-    if (!configurator) throw new NotFoundError('Configurator');
+    if (!configurator) throw new NotFoundError("Configurator");
     return configurator;
   },
 
-  async update(id: string, clientId: string, data: Partial<Configurator>): Promise<Configurator> {
+  async update(
+    id: string,
+    clientId: string,
+    data: Partial<Configurator>
+  ): Promise<Configurator> {
     // Verify ownership
     await this.getById(id, clientId);
 
@@ -132,7 +136,15 @@ export const ConfiguratorService = {
   async duplicate(id: string, clientId: string): Promise<Configurator> {
     const original = await this.getById(id, clientId);
 
-    const { id: _, publicId: __, slug: ___, accessToken: ____, createdAt, updatedAt, ...data } = original;
+    const {
+      id: _,
+      publicId: __,
+      slug: ___,
+      accessToken: ____,
+      createdAt,
+      updatedAt,
+      ...data
+    } = original;
 
     return await this.create(clientId, {
       ...data,
