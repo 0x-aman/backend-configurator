@@ -5,9 +5,17 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
+import { ProductShowcase } from "../product-showcase";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -43,51 +51,60 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Forgot password?</CardTitle>
-          <CardDescription className="text-center">
-            Enter your email and we'll send you a reset link
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
+      {/* Left Column - Form */}
+      <div className="flex items-center justify-center p-6 lg:p-16 bg-background">
+        <div className="w-full max-w-sm">
+          <div className="mb-10">
+            <h1 className="text-4xl font-bold text-foreground mb-3">
+              Forgot password?
+            </h1>
+            <p className="text-base text-muted-foreground">
+              Enter your email and we'll send you a reset link
+            </p>
+          </div>
+
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          
+
           {success && (
-            <Alert className="border-green-200 bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+            <Alert className="mb-6 border-green-200 bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-400">
               <CheckCircle2 className="h-4 w-4" />
               <AlertDescription>
                 Password reset link sent! Check your email.
               </AlertDescription>
             </Alert>
           )}
-          
+
           {!success ? (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email" data-testid="email-label">Email</Label>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2.5">
+                <Label
+                  htmlFor="email"
+                  className="text-sm font-semibold text-foreground"
+                >
+                  Email address
+                </Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="name@example.com"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   disabled={loading}
-                  data-testid="email-input"
+                  className="h-11 bg-muted/50 border-border focus:bg-background"
                 />
               </div>
-              <Button 
-                type="submit" 
-                className="w-full" 
+
+              <Button
+                type="submit"
+                className="w-full h-11 mt-8 font-semibold"
                 disabled={loading}
-                data-testid="submit-button"
               >
                 {loading ? (
                   <>
@@ -100,32 +117,34 @@ export default function ForgotPasswordPage() {
               </Button>
             </form>
           ) : (
-            <div className="text-center space-y-4">
+            <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
                 Didn't receive the email? Check your spam folder or
               </p>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setSuccess(false)}
-                className="w-full"
-                data-testid="try-again-button"
+                className="w-full h-11 font-medium"
               >
                 Try again
               </Button>
             </div>
           )}
-        </CardContent>
-        <CardFooter className="flex justify-center">
-          <Link 
-            href="/login" 
-            className="flex items-center text-sm text-primary hover:underline"
-            data-testid="back-to-login-link"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to login
-          </Link>
-        </CardFooter>
-      </Card>
+
+          <div className="mt-8 flex items-center justify-center">
+            <Link
+              href="/login"
+              className="flex items-center text-sm font-medium text-primary hover:underline"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to login
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Column - Product Showcase */}
+      <ProductShowcase />
     </div>
   );
 }

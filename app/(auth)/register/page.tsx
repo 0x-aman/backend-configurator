@@ -7,9 +7,17 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ProductShowcase } from "../product-showcase";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -52,7 +60,7 @@ export default function RegisterPage() {
       }
 
       setSuccess(true);
-      
+
       // Auto sign in after registration
       setTimeout(async () => {
         await signIn("credentials", {
@@ -74,32 +82,43 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Create an account</CardTitle>
-          <CardDescription className="text-center">
-            Get started with your free trial
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
+      {/* Left Column - Form */}
+      <div className="flex items-center justify-center p-6 lg:p-16 bg-background">
+        <div className="w-full max-w-sm">
+          <div className="mb-10">
+            <h1 className="text-4xl font-bold text-foreground mb-3">
+              Create an account
+            </h1>
+            <p className="text-base text-muted-foreground">
+              Get started with your free trial
+            </p>
+          </div>
+
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          
+
           {success && (
-            <Alert className="border-green-200 bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+            <Alert className="mb-6 border-green-200 bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-400">
               <CheckCircle2 className="h-4 w-4" />
-              <AlertDescription>Account created! Redirecting to dashboard...</AlertDescription>
+              <AlertDescription>
+                Account created! Redirecting...
+              </AlertDescription>
             </Alert>
           )}
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name" data-testid="name-label">Full Name</Label>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2.5">
+              <Label
+                htmlFor="name"
+                className="text-sm font-semibold text-foreground"
+              >
+                Full name
+              </Label>
               <Input
                 id="name"
                 type="text"
@@ -108,54 +127,76 @@ export default function RegisterPage() {
                 onChange={(e) => setName(e.target.value)}
                 required
                 disabled={loading || success}
-                data-testid="name-input"
+                className="h-11 bg-muted/50 border-border focus:bg-background"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email" data-testid="email-label">Email</Label>
+
+            <div className="space-y-2.5">
+              <Label
+                htmlFor="email"
+                className="text-sm font-semibold text-foreground"
+              >
+                Email address
+              </Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="name@example.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading || success}
-                data-testid="email-input"
+                className="h-11 bg-muted/50 border-border focus:bg-background"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password" data-testid="password-label">Password</Label>
+
+            <div className="space-y-2.5">
+              <Label
+                htmlFor="password"
+                className="text-sm font-semibold text-foreground"
+              >
+                Password
+              </Label>
               <Input
                 id="password"
                 type="password"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={loading || success}
                 minLength={8}
-                data-testid="password-input"
+                className="h-11 bg-muted/50 border-border focus:bg-background"
               />
-              <p className="text-xs text-muted-foreground">Must be at least 8 characters</p>
+              <p className="text-xs text-muted-foreground font-medium">
+                Must be at least 8 characters
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword" data-testid="confirm-password-label">Confirm Password</Label>
+
+            <div className="space-y-2.5">
+              <Label
+                htmlFor="confirmPassword"
+                className="text-sm font-semibold text-foreground"
+              >
+                Confirm password
+              </Label>
               <Input
                 id="confirmPassword"
                 type="password"
+                placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 disabled={loading || success}
                 minLength={8}
-                data-testid="confirm-password-input"
+                className="h-11 bg-muted/50 border-border focus:bg-background"
               />
             </div>
-            <Button 
-              type="submit" 
-              className="w-full" 
+
+            <Button
+              type="submit"
+              className="w-full h-11 mt-8 font-semibold"
               disabled={loading || success}
-              data-testid="register-button"
             >
               {loading ? (
                 <>
@@ -173,12 +214,12 @@ export default function RegisterPage() {
             </Button>
           </form>
 
-          <div className="relative">
+          <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+              <span className="w-full border-t border-border" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
+            <div className="relative flex justify-center">
+              <span className="bg-background px-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Or continue with
               </span>
             </div>
@@ -189,8 +230,7 @@ export default function RegisterPage() {
             type="button"
             disabled={loading || success}
             onClick={handleGoogleSignUp}
-            className="w-full"
-            data-testid="google-signup-button"
+            className="w-full h-11 font-medium bg-transparent"
           >
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
               <path
@@ -212,16 +252,21 @@ export default function RegisterPage() {
             </svg>
             Sign up with Google
           </Button>
-        </CardContent>
-        <CardFooter className="flex flex-col space-y-2">
-          <div className="text-sm text-center text-muted-foreground">
+
+          <p className="text-sm text-center text-muted-foreground mt-8">
             Already have an account?{" "}
-            <Link href="/login" className="text-primary hover:underline" data-testid="login-link">
+            <Link
+              href="/login"
+              className="font-semibold text-primary hover:underline"
+            >
               Sign in
             </Link>
-          </div>
-        </CardFooter>
-      </Card>
+          </p>
+        </div>
+      </div>
+
+      {/* Right Column - Product Showcase */}
+      <ProductShowcase />
     </div>
   );
 }

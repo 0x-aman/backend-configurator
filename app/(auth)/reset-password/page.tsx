@@ -6,15 +6,23 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ProductShowcase } from "../product-showcase";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
-  
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -58,7 +66,7 @@ export default function ResetPasswordPage() {
       }
 
       setSuccess(true);
-      
+
       // Redirect to login after 2 seconds
       setTimeout(() => {
         router.push("/login");
@@ -71,64 +79,83 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Reset password</CardTitle>
-          <CardDescription className="text-center">
-            Enter your new password below
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
+      {/* Left Column - Form */}
+      <div className="flex items-center justify-center p-6 lg:p-16 bg-background">
+        <div className="w-full max-w-sm">
+          <div className="mb-10">
+            <h1 className="text-4xl font-bold text-foreground mb-3">
+              Reset password
+            </h1>
+            <p className="text-base text-muted-foreground">
+              Enter your new password below
+            </p>
+          </div>
+
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          
+
           {success && (
-            <Alert className="border-green-200 bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+            <Alert className="mb-6 border-green-200 bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-400">
               <CheckCircle2 className="h-4 w-4" />
               <AlertDescription>
                 Password reset successful! Redirecting to login...
               </AlertDescription>
             </Alert>
           )}
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="password" data-testid="password-label">New Password</Label>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2.5">
+              <Label
+                htmlFor="password"
+                className="text-sm font-semibold text-foreground"
+              >
+                New Password
+              </Label>
               <Input
                 id="password"
                 type="password"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={loading || success || !token}
                 minLength={8}
-                data-testid="password-input"
+                className="h-11 bg-muted/50 border-border focus:bg-background"
               />
-              <p className="text-xs text-muted-foreground">Must be at least 8 characters</p>
+              <p className="text-xs text-muted-foreground">
+                Must be at least 8 characters
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword" data-testid="confirm-password-label">Confirm Password</Label>
+
+            <div className="space-y-2.5">
+              <Label
+                htmlFor="confirmPassword"
+                className="text-sm font-semibold text-foreground"
+              >
+                Confirm Password
+              </Label>
               <Input
                 id="confirmPassword"
                 type="password"
+                placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 disabled={loading || success || !token}
                 minLength={8}
-                data-testid="confirm-password-input"
+                className="h-11 bg-muted/50 border-border focus:bg-background"
               />
             </div>
-            <Button 
-              type="submit" 
-              className="w-full" 
+
+            <Button
+              type="submit"
+              className="w-full h-11 mt-8 font-semibold"
               disabled={loading || success || !token}
-              data-testid="reset-button"
             >
               {loading ? (
                 <>
@@ -145,17 +172,20 @@ export default function ResetPasswordPage() {
               )}
             </Button>
           </form>
-        </CardContent>
-        <CardFooter className="flex justify-center">
-          <Link 
-            href="/login" 
-            className="text-sm text-primary hover:underline"
-            data-testid="back-to-login-link"
-          >
-            Back to login
-          </Link>
-        </CardFooter>
-      </Card>
+
+          <div className="mt-8 flex items-center justify-center">
+            <Link
+              href="/login"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              Back to login
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Column - Product Showcase */}
+      <ProductShowcase />
     </div>
   );
 }

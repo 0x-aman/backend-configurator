@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertCircle } from "lucide-react";
+import { ProductShowcase } from "../product-showcase";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -59,68 +60,77 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            Welcome back
-          </CardTitle>
-          <CardDescription className="text-center">
-            Sign in to your account to continue
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
+      {/* Left Column - Form */}
+      <div className="flex items-center justify-center p-6 lg:p-16 bg-background">
+        <div className="w-full max-w-sm">
+          <div className="mb-10">
+            <h1 className="text-4xl font-bold text-foreground mb-3">
+              Welcome back
+            </h1>
+            <p className="text-base text-muted-foreground">
+              Sign in to your account to continue
+            </p>
+          </div>
+
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email" data-testid="email-label">
-                Email
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2.5">
+              <Label
+                htmlFor="email"
+                className="text-sm font-semibold text-foreground"
+              >
+                Email address
               </Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="name@example.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
-                data-testid="email-input"
+                className="h-11 bg-muted/50 border-border focus:bg-background"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password" data-testid="password-label">
-                Password
-              </Label>
+
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <Label
+                  htmlFor="password"
+                  className="text-sm font-semibold text-foreground"
+                >
+                  Password
+                </Label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <Input
                 id="password"
                 type="password"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={loading}
-                data-testid="password-input"
+                className="h-11 bg-muted/50 border-border focus:bg-background"
               />
             </div>
-            <div className="flex items-center justify-between">
-              <Link
-                href="/forgot-password"
-                className="text-sm text-primary hover:underline"
-                data-testid="forgot-password-link"
-              >
-                Forgot password?
-              </Link>
-            </div>
+
             <Button
               type="submit"
-              className="w-full"
+              className="w-full h-11 mt-8 font-semibold"
               disabled={loading}
-              data-testid="login-button"
             >
               {loading ? (
                 <>
@@ -133,12 +143,12 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="relative">
+          <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+              <span className="w-full border-t border-border" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
+            <div className="relative flex justify-center">
+              <span className="bg-background px-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Or continue with
               </span>
             </div>
@@ -149,8 +159,7 @@ export default function LoginPage() {
             type="button"
             disabled={loading}
             onClick={handleGoogleSignIn}
-            className="w-full"
-            data-testid="google-signin-button"
+            className="w-full h-11 font-medium bg-transparent"
           >
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
               <path
@@ -172,20 +181,21 @@ export default function LoginPage() {
             </svg>
             Sign in with Google
           </Button>
-        </CardContent>
-        <CardFooter className="flex flex-col space-y-2">
-          <div className="text-sm text-center text-muted-foreground">
+
+          <p className="text-sm text-center text-muted-foreground mt-8">
             Don't have an account?{" "}
             <Link
               href="/register"
-              className="text-primary hover:underline"
-              data-testid="register-link"
+              className="font-semibold text-primary hover:underline"
             >
               Sign up
             </Link>
-          </div>
-        </CardFooter>
-      </Card>
+          </p>
+        </div>
+      </div>
+
+      {/* Right Column - Product Showcase */}
+      <ProductShowcase />
     </div>
   );
 }
