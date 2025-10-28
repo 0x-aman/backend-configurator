@@ -16,10 +16,10 @@ export async function POST(request: NextRequest) {
       return fail('Name is required', 'VALIDATION_ERROR');
     }
 
-    // Check plan limits
+    // Check plan limits based on subscription status
     const existingCount = await ConfiguratorService.list(client.id).then(list => list.length);
-    if (!canCreateConfigurator(client.subscriptionPlan, existingCount)) {
-      return fail('Configurator limit reached for your plan', 'LIMIT_EXCEEDED', 403);
+    if (!canCreateConfigurator(client.subscriptionStatus, existingCount)) {
+      return fail('Configurator limit reached. Please upgrade your subscription to create more configurators.', 'LIMIT_EXCEEDED', 403);
     }
 
     const configurator = await ConfiguratorService.create(client.id, {

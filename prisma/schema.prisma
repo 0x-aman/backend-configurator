@@ -147,8 +147,10 @@ model Client {
   analyticsEvents AnalyticsEvent[]
 
   // Audit
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  Account   Account[]
+  Session   Session[]
 
   @@index([email])
   @@index([apiKey])
@@ -651,4 +653,38 @@ model ApiLog {
   @@index([createdAt])
   @@index([apiKeyId])
   @@map("api_logs")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  clientId          String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  client            Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  clientId     String
+  expires      DateTime
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }

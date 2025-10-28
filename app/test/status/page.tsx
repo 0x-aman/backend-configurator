@@ -371,8 +371,10 @@ export default function HealthPage() {
   useEffect(() => {
     (async () => {
       const res = await fetch("/api/health");
-      const { data } = await res.json();
-      setChecks(data.checks);
+      const json = await res.json();
+      // Handle new response format: { success: true, data: { checks: [...] } }
+      const healthData = json.data || json;
+      setChecks(healthData.checks || []);
     })();
   }, []);
   const getStatusIcon = (status: string) => {

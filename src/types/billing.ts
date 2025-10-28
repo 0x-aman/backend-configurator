@@ -1,10 +1,10 @@
 // Billing and subscription types
-import { SubscriptionPlan, SubscriptionStatus } from '@prisma/client';
+import { SubscriptionDuration, SubscriptionStatus } from '@prisma/client';
 
-export { SubscriptionPlan, SubscriptionStatus };
+export { SubscriptionDuration, SubscriptionStatus };
 
 export interface CreateCheckoutSessionRequest {
-  plan: SubscriptionPlan;
+  duration: SubscriptionDuration;
   successUrl?: string;
   cancelUrl?: string;
 }
@@ -20,6 +20,6 @@ export interface SubscriptionData {
   subscriptionId: string;
   customerId: string;
   status: SubscriptionStatus;
-  plan: SubscriptionPlan;
+  duration: SubscriptionDuration | null;
   currentPeriodEnd: Date;
 }

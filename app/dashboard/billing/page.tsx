@@ -71,7 +71,9 @@ export default function BillingPage() {
         }),
       });
 
-      const data = await response.json();
+      const json = await response.json();
+      // Handle new API response format: { success: true, data: {...} }
+      const data = json.data || json;
       if (data.url) {
         window.location.href = data.url;
       } else {
@@ -95,7 +97,9 @@ export default function BillingPage() {
         }),
       });
 
-      const data = await response.json();
+      const json = await response.json();
+      // Handle new API response format: { success: true, data: {...} }
+      const data = json.data || json;
       if (data.url) {
         window.location.href = data.url;
       } else {

@@ -3,7 +3,7 @@ import { prisma } from "@/src/lib/prisma";
 import { hashPassword } from "@/src/lib/auth";
 import { generateApiKey, generatePublicKey } from "@/src/lib/api-keys";
 import { NotFoundError, ConflictError } from "@/src/lib/errors";
-import type { Client, SubscriptionPlan } from "@prisma/client";
+import type { Client, SubscriptionStatus, SubscriptionDuration } from "@prisma/client";
 
 export const ClientService = {
   async create(data: {
@@ -63,8 +63,8 @@ export const ClientService = {
   async updateSubscription(
     id: string,
     data: {
-      subscriptionStatus: string;
-      subscriptionPlan: SubscriptionPlan;
+      subscriptionStatus: SubscriptionStatus;
+      subscriptionDuration?: SubscriptionDuration | null;
       stripeCustomerId?: string;
       stripeSubscriptionId?: string;
       subscriptionEndsAt?: Date;

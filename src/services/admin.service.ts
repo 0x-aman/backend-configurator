@@ -17,7 +17,7 @@ export const AdminService = {
           name: true,
           companyName: true,
           subscriptionStatus: true,
-          subscriptionPlan: true,
+          subscriptionDuration: true,
           monthlyRequests: true,
           requestLimit: true,
           createdAt: true,
@@ -66,7 +66,7 @@ export const AdminService = {
     ]);
 
     const subscriptionBreakdown = await prisma.client.groupBy({
-      by: ['subscriptionPlan'],
+      by: ['subscriptionStatus'],
       _count: true,
     });
 
@@ -77,7 +77,7 @@ export const AdminService = {
       totalQuotes,
       recentActivity,
       subscriptionBreakdown: subscriptionBreakdown.reduce((acc, curr) => {
-        acc[curr.subscriptionPlan] = curr._count;
+        acc[curr.subscriptionStatus] = curr._count;
         return acc;
       }, {} as Record<string, number>),
     };
