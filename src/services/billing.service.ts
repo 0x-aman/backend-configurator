@@ -8,7 +8,7 @@ import { PLAN_LIMITS } from '@/src/config/permissions';
 export const BillingService = {
   async createCheckoutSession(
     clientId: string,
-    plan: SubscriptionPlan,
+    duration: 'MONTHLY' | 'YEARLY',
     successUrl: string,
     cancelUrl: string
   ) {
@@ -30,17 +30,23 @@ export const BillingService = {
       });
     }
 
-    // Get price ID based on plan (these would be configured in Stripe)
-    const priceIds: Record<SubscriptionPlan, string> = {
-      FREE: '', // No price for free
-      STARTER: process.env.STRIPE_STARTER_PRICE_ID || 'price_starter',
-      PRO: process.env.STRIPE_PRO_PRICE_ID || 'price_pro',
-      ENTERPRISE: process.env.STRIPE_ENTERPRISE_PRICE_ID || 'price_enterprise',
-    };
+    // Create or get price IDs for monthly and yearly subscriptions
+    // In production, these should be created in Stripe dashboard and stored in env
+    const monthlyPriceId = process.env.STRIPE_MONTHLY_PRICE_ID;
+    const yearlyPriceId = process.env.STRIPE_YEARLY_PRICE_ID;
+
+    // If no price IDs in env, create them dynamically (for development)
+    let priceId: string;
+    
+    if (duration === 'MONTHLY') {
+      priceId = monthlyPriceId || await createOrGetPrice('monthly', 9900); // €99.00
+    } else {
+      priceId = yearlyPriceId || await createOrGetPrice('yearly', 99900); // €999.00
+    }
 
     const session = await createCheckoutSession({
       customerId,
-      priceId: priceIds[plan],
+      priceId,
       successUrl,
       cancelUrl,
     });
@@ -71,27 +77,18 @@ export const BillingService = {
 
     if (!client) return;
 
-    // Determine plan from price ID
-    const priceId = subscription.items.data[0]?.price.id;
-    let plan: SubscriptionPlan = 'FREE';
+    // Determine duration from price interval
+    const interval = subscription.items.data[0]?.price.recurring?.interval;
+    const duration = interval === 'year' ? 'YEARLY' : 'MONTHLY';
 
-    // Map price ID to plan (configure these in env)
-    if (priceId === process.env.STRIPE_STARTER_PRICE_ID) plan = 'STARTER';
-    if (priceId === process.env.STRIPE_PRO_PRICE_ID) plan = 'PRO';
-    if (priceId === process.env.STRIPE_ENTERPRISE_PRICE_ID) plan = 'ENTERPRISE';
-
-    await ClientService.updateSubscription(client.id, {
-      subscriptionStatus: status,
-      subscriptionPlan: plan,
-      stripeSubscriptionId: subscriptionId,
-      subscriptionEndsAt: currentPeriodEnd,
-    });
-
-    // Update request limit based on plan
-    const limit = PLAN_LIMITS[plan].requests;
     await prisma.client.update({
       where: { id: client.id },
-      data: { requestLimit: limit },
+      data: {
+        subscriptionStatus: status,
+        subscriptionDuration: duration,
+        stripeSubscriptionId: subscriptionId,
+        subscriptionEndsAt: currentPeriodEnd,
+      },
     });
   },
 
@@ -108,11 +105,53 @@ export const BillingService = {
 
     if (!client) return;
 
-    await ClientService.updateSubscription(client.id, {
-      subscriptionStatus: 'CANCELED',
-      subscriptionPlan: 'FREE',
-      stripeSubscriptionId: undefined,
-      subscriptionEndsAt: new Date(),
+    await prisma.client.update({
+      where: { id: client.id },
+      data: {
+        subscriptionStatus: 'CANCELED',
+        subscriptionDuration: null,
+        stripeSubscriptionId: null,
+        subscriptionEndsAt: new Date(),
+      },
     });
   },
 };
+
+// Helper function to create or get Stripe price
+async function createOrGetPrice(interval: 'month' | 'year', amount: number): Promise<string> {
+  try {
+    // Try to find existing product
+    const products = await stripe.products.list({
+      limit: 1,
+    });
+
+    let productId: string;
+
+    if (products.data.length === 0) {
+      // Create product if it doesn't exist
+      const product = await stripe.products.create({
+        name: 'Configurator Subscription',
+        description: 'Product configurator platform subscription',
+      });
+      productId = product.id;
+    } else {
+      productId = products.data[0].id;
+    }
+
+    // Create price
+    const price = await stripe.prices.create({
+      product: productId,
+      unit_amount: amount,
+      currency: 'eur',
+      recurring: {
+        interval: interval,
+      },
+    });
+
+    return price.id;
+  } catch (error) {
+    console.error('Failed to create price:', error);
+    // Fallback to dummy price IDs
+    return interval === 'month' ? 'price_monthly' : 'price_yearly';
+  }
+}

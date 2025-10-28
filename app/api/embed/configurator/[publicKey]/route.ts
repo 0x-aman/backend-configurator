@@ -8,11 +8,11 @@ import { addCorsHeaders } from '@/src/lib/cors';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { publicKey: string } }
+  { params }: { params: Promise<{ publicKey: string }> }
 ) {
   try {
     const client = await validatePublicKey(request);
-    const { publicKey } = params;
+    const { publicKey } = await params;
 
     // Get first published configurator for this client
     const configurators = await ConfiguratorService.list(client.id);

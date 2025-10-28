@@ -1,19 +1,11 @@
-// File service for AWS S3 uploads
-import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+// File service for Azure Blob Storage uploads
+import { getBlockBlobClient, getContainerClient, ensureContainerExists } from '@/lib/azure-blob';
+import { generateBlobSASQueryParameters, BlobSASPermissions, StorageSharedKeyCredential } from '@azure/storage-blob';
 import { prisma } from '@/src/lib/prisma';
 import { env } from '@/src/config/env';
 import { NotFoundError } from '@/src/lib/errors';
 import type { File as FileModel, FileType } from '@prisma/client';
 import { generateId } from '@/src/utils/id';
-
-const s3Client = new S3Client({
-  region: env.AWS_REGION,
-  credentials: {
-    accessKeyId: env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
-  },
-});
 
 export const FileService = {
   async upload(
@@ -25,22 +17,22 @@ export const FileService = {
       size: number;
     }
   ): Promise<FileModel> {
+    await ensureContainerExists();
+
     const fileId = generateId();
     const ext = file.originalName.split('.').pop();
     const filename = `${fileId}.${ext}`;
-    const key = `clients/${clientId}/${filename}`;
+    const blobName = `clients/${clientId}/${filename}`;
 
-    // Upload to S3
-    await s3Client.send(
-      new PutObjectCommand({
-        Bucket: env.AWS_BUCKET,
-        Key: key,
-        Body: file.buffer,
-        ContentType: file.mimeType,
-      })
-    );
+    // Upload to Azure Blob Storage
+    const blockBlobClient = getBlockBlobClient(blobName);
+    await blockBlobClient.upload(file.buffer, file.buffer.length, {
+      blobHTTPHeaders: {
+        blobContentType: file.mimeType,
+      },
+    });
 
-    const url = `https://${env.AWS_BUCKET}.s3.${env.AWS_REGION}.amazonaws.com/${key}`;
+    const url = blockBlobClient.url;
 
     // Determine file type
     let fileType: FileType = 'OTHER';
@@ -58,7 +50,7 @@ export const FileService = {
         fileType,
         mimeType: file.mimeType,
         size: file.size,
-        key,
+        key: blobName,
         url,
       },
     });
@@ -83,13 +75,9 @@ export const FileService = {
   async delete(id: string): Promise<void> {
     const file = await this.getById(id);
 
-    // Delete from S3
-    await s3Client.send(
-      new DeleteObjectCommand({
-        Bucket: env.AWS_BUCKET,
-        Key: file.key,
-      })
-    );
+    // Delete from Azure Blob Storage
+    const blockBlobClient = getBlockBlobClient(file.key);
+    await blockBlobClient.deleteIfExists();
 
     // Delete from database
     await prisma.file.delete({ where: { id } });
@@ -100,18 +88,44 @@ export const FileService = {
     filename: string,
     contentType: string
   ): Promise<{ uploadUrl: string; fileUrl: string; key: string }> {
+    await ensureContainerExists();
+
     const fileId = generateId();
-    const key = `clients/${clientId}/${fileId}-${filename}`;
+    const blobName = `clients/${clientId}/${fileId}-${filename}`;
 
-    const command = new PutObjectCommand({
-      Bucket: env.AWS_BUCKET,
-      Key: key,
-      ContentType: contentType,
-    });
+    const blockBlobClient = getBlockBlobClient(blobName);
 
-    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-    const fileUrl = `https://${env.AWS_BUCKET}.s3.${env.AWS_REGION}.amazonaws.com/${key}`;
+    // Generate SAS token for upload (valid for 1 hour)
+    const sasToken = generateBlobSASQueryParameters(
+      {
+        containerName: env.AZURE_CONTAINER_NAME,
+        blobName: blobName,
+        permissions: BlobSASPermissions.parse("cw"), // create, write
+        startsOn: new Date(),
+        expiresOn: new Date(new Date().valueOf() + 3600 * 1000),
+      },
+      getCredential()
+    ).toString();
 
-    return { uploadUrl, fileUrl, key };
+    const uploadUrl = `${blockBlobClient.url}?${sasToken}`;
+    const fileUrl = blockBlobClient.url;
+
+    return { uploadUrl, fileUrl, key: blobName };
   },
 };
+
+function getCredential(): StorageSharedKeyCredential {
+  // Parse connection string to extract account name and key
+  const connectionString = env.AZURE_STORAGE_CONNECTION_STRING;
+  const accountNameMatch = connectionString.match(/AccountName=([^;]+)/);
+  const accountKeyMatch = connectionString.match(/AccountKey=([^;]+)/);
+
+  if (!accountNameMatch || !accountKeyMatch) {
+    throw new Error('Invalid Azure Storage connection string');
+  }
+
+  return new StorageSharedKeyCredential(
+    accountNameMatch[1],
+    accountKeyMatch[1]
+  );
+}

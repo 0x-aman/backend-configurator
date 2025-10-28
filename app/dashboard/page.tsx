@@ -5,7 +5,14 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LayoutDashboard, Users, FileText, TrendingUp, DollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { LayoutDashboard, Users, FileText, TrendingUp, DollarSign, Plus, Sparkles } from "lucide-react";
+import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface DashboardStats {
   configurators: number;
@@ -18,6 +25,12 @@ export default function DashboardPage() {
   const { data: session } = useSession();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+  });
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -25,12 +38,26 @@ export default function DashboardPage() {
         const response = await fetch("/api/client/me");
         if (response.ok) {
           const data = await response.json();
+          
+          // Fetch configurators count
+          const configResponse = await fetch("/api/configurator/list");
+          let configCount = 0;
+          if (configResponse.ok) {
+            const configs = await configResponse.json();
+            configCount = configs.data?.length || 0;
+          }
+
           setStats({
-            configurators: 0,
+            configurators: configCount,
             quotes: 0,
             monthlyRequests: data.client?.monthlyRequests || 0,
             subscriptionStatus: data.client?.subscriptionStatus || "TRIALING",
           });
+
+          // Show create modal if no configurators
+          if (configCount === 0) {
+            setTimeout(() => setShowCreateModal(true), 500);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch stats:", error);
@@ -41,6 +68,43 @@ export default function DashboardPage() {
 
     fetchStats();
   }, []);
+
+  const handleCreateConfigurator = async () => {
+    if (!formData.name.trim()) {
+      toast.error("Please enter a configurator name");
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const response = await fetch("/api/configurator/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast.success("Configurator created successfully!");
+        setShowCreateModal(false);
+        setFormData({ name: "", description: "" });
+        
+        // Refresh stats
+        setStats(prev => prev ? { ...prev, configurators: prev.configurators + 1 } : null);
+        
+        // Redirect to configurator page or reload
+        window.location.reload();
+      } else {
+        toast.error(data.message || "Failed to create configurator");
+      }
+    } catch (error) {
+      console.error("Failed to create configurator:", error);
+      toast.error("Failed to create configurator. Please try again.");
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const statCards = [
     {
@@ -74,6 +138,25 @@ export default function DashboardPage() {
           Welcome back, {session?.user?.name || "User"}! Here's your overview.
         </p>
       </div>
+
+      {/* Empty State Banner */}
+      {!loading && stats?.configurators === 0 && (
+        <Alert className="mb-6 border-primary/50 bg-primary/5" data-testid="create-configurator-banner">
+          <Sparkles className="h-5 w-5 text-primary" />
+          <AlertDescription className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-foreground">Get started by creating your first configurator!</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Build beautiful product configurators for your business in minutes.
+              </p>
+            </div>
+            <Button onClick={() => setShowCreateModal(true)} className="ml-4" data-testid="banner-create-button">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Configurator
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {loading ? (
@@ -166,6 +249,61 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Create Configurator Modal */}
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <DialogContent data-testid="create-configurator-modal">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Create Your First Configurator
+            </DialogTitle>
+            <DialogDescription>
+              Give your configurator a name and description to get started. You can customize it further later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Configurator Name *</Label>
+              <Input
+                id="name"
+                placeholder="e.g., Product Configurator"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                data-testid="configurator-name-input"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description (Optional)</Label>
+              <Textarea
+                id="description"
+                placeholder="Describe what this configurator is for..."
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={3}
+                data-testid="configurator-description-input"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowCreateModal(false)}
+              disabled={creating}
+              data-testid="cancel-create-button"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateConfigurator}
+              disabled={creating}
+              data-testid="submit-create-button"
+            >
+              {creating ? "Creating..." : "Create Configurator"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

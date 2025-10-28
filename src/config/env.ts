@@ -16,16 +16,16 @@ export const env = {
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || "",
   STRIPE_PUBLISHABLE_KEY: process.env.STRIPE_PUBLISHABLE_KEY || "",
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || "",
+  STRIPE_MONTHLY_PRICE_ID: process.env.STRIPE_MONTHLY_PRICE_ID || "",
+  STRIPE_YEARLY_PRICE_ID: process.env.STRIPE_YEARLY_PRICE_ID || "",
 
   // Resend
   RESEND_API_KEY: process.env.RESEND_API_KEY || "",
   FROM_EMAIL: process.env.FROM_EMAIL || "noreply@example.com",
 
-  // AWS S3
-  AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID || "",
-  AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY || "",
-  AWS_REGION: process.env.AWS_REGION || "us-east-1",
-  AWS_BUCKET: process.env.AWS_BUCKET || "",
+  // Azure Blob Storage
+  AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING || "",
+  AZURE_CONTAINER_NAME: process.env.AZURE_CONTAINER_NAME || "uploads",
 
   // App
   APP_NAME: process.env.APP_NAME || "SaaS Configurator",

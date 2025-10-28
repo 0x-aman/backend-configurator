@@ -5,10 +5,10 @@ import { success, fail } from '@/src/lib/response';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { quoteCode: string } }
+  { params }: { params: Promise<{ quoteCode: string }> }
 ) {
   try {
-    const { quoteCode } = params;
+    const { quoteCode } = await params;
     const quote = await QuoteService.getByCode(quoteCode);
 
     // Track open

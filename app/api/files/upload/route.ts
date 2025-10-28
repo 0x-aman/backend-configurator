@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Get signed upload URL for direct S3 upload
+// Get signed upload URL for direct Azure Blob Storage upload
 export async function GET(request: NextRequest) {
   try {
     const client = await authenticateRequest(request);

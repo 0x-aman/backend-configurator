@@ -3,8 +3,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { stripe } from "@/src/lib/stripe";
 import { resend } from "@/src/lib/email";
-import { s3Client } from "@/lib/s3";
-import { ListBucketsCommand } from "@aws-sdk/client-s3";
+import { getBlobServiceClient } from "@/lib/azure-blob";
 import { success } from "@/src/lib/response";
 import { env } from "@/src/config/env";
 
@@ -100,35 +99,36 @@ async function checkResend(): Promise<HealthStatus> {
   }
 }
 
-async function checkAWS(): Promise<HealthStatus> {
+async function checkAzureStorage(): Promise<HealthStatus> {
   const start = Date.now();
 
-  // Check if AWS is configured
+  // Check if Azure Storage is configured
   if (
-    !env.AWS_ACCESS_KEY_ID ||
-    env.AWS_ACCESS_KEY_ID === "your_aws_access_key_id"
+    !env.AZURE_STORAGE_CONNECTION_STRING ||
+    env.AZURE_STORAGE_CONNECTION_STRING === ""
   ) {
     return {
-      service: "AWS S3",
+      service: "Azure Blob Storage",
       status: "not_configured",
-      message: "AWS credentials not configured",
+      message: "Azure Storage connection string not configured",
     };
   }
 
   try {
-    // Try to list buckets (lightweight API call)
-    await s3Client.send(new ListBucketsCommand({}));
+    // Try to get service properties (lightweight API call)
+    const blobService = getBlobServiceClient();
+    await blobService.getProperties();
     return {
-      service: "AWS S3",
+      service: "Azure Blob Storage",
       status: "healthy",
-      message: "AWS S3 connection successful",
+      message: "Azure Blob Storage connection successful",
       responseTime: Date.now() - start,
     };
   } catch (error: any) {
     return {
-      service: "AWS S3",
+      service: "Azure Blob Storage",
       status: "error",
-      message: error.message || "AWS S3 connection failed",
+      message: error.message || "Azure Blob Storage connection failed",
       responseTime: Date.now() - start,
     };
   }
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
     checkDatabase(),
     checkStripe(),
     checkResend(),
-    checkAWS(),
+    checkAzureStorage(),
   ]);
 
   const overallHealthy = checks.every(

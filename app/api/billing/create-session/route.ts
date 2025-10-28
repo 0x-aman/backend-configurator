@@ -10,20 +10,17 @@ export async function POST(request: NextRequest) {
     const client = await authenticateRequest(request);
     const body = await request.json();
 
-    const { plan } = body;
+    const { duration, successUrl, cancelUrl } = body;
 
-    if (!plan) {
-      return fail('Plan is required', 'VALIDATION_ERROR');
+    if (!duration || (duration !== 'MONTHLY' && duration !== 'YEARLY')) {
+      return fail('Valid duration (MONTHLY or YEARLY) is required', 'VALIDATION_ERROR');
     }
-
-    const successUrl = `${env.APP_URL}/billing/success?session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl = `${env.APP_URL}/billing`;
 
     const session = await BillingService.createCheckoutSession(
       client.id,
-      plan,
-      successUrl,
-      cancelUrl
+      duration,
+      successUrl || `${env.APP_URL}/dashboard/billing?success=true`,
+      cancelUrl || `${env.APP_URL}/dashboard/billing?canceled=true`
     );
 
     return success({ sessionId: session.id, url: session.url });
