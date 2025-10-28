@@ -41,4 +41,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-MIGRATION_NOTES.MD
+MIGRATION_NOTES.md
