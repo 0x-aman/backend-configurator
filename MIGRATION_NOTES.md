@@ -5,12 +5,14 @@
 ### 1. **AWS S3 → Azure Blob Storage Migration** ✅
 
 #### Removed:
+
 - `@aws-sdk/client-s3` package
 - `@aws-sdk/s3-request-presigner` package
 - `/app/lib/s3.ts` file
 - All AWS environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, AWS_BUCKET)
 
 #### Added:
+
 - `@azure/storage-blob` package (v12.29.1)
 - `/app/lib/azure-blob.ts` - Azure Blob Storage client
 - New environment variables:
@@ -18,6 +20,7 @@
   - `AZURE_CONTAINER_NAME` (default: "uploads")
 
 #### Updated Files:
+
 - `/app/src/services/file.service.ts` - Complete rewrite to use Azure Blob Storage
   - Upload functionality
   - Delete functionality
@@ -30,6 +33,7 @@
 ### 2. **Configurator Creation on Login** ✅
 
 #### Changes:
+
 - Updated `/app/app/dashboard/page.tsx`:
   - Added automatic detection of zero configurators
   - Shows prominent banner when no configurators exist
@@ -38,6 +42,7 @@
   - Integrated with existing `/api/configurator/create` endpoint
 
 #### Features:
+
 - User-friendly "Get Started" banner with sparkle icon
 - Modal dialog with form for configurator name and description
 - Proper error handling and toast notifications
@@ -46,6 +51,7 @@
 ### 3. **Stripe Payment Integration** ✅
 
 #### Updated:
+
 - `/app/src/services/billing.service.ts`:
   - Changed from plan-based to duration-based (MONTHLY/YEARLY)
   - Added dynamic price creation if price IDs not in environment
@@ -66,12 +72,14 @@
   - Added STRIPE_YEARLY_PRICE_ID
 
 #### Stripe Test Keys Added:
+
 - **Public Key**: `pk_test_51SMnxlERiHFL2BJmGHnu2pdZ8BNJzm4LHSwEysP34h2uD82f1C9lHFRepuw3uGIFA2iRqzCyrYwoU2fm5twoX8l400lKh1aStK`
 - **Secret Key**: `sk_test_51SMnxlERiHFL2BJmBrxhwZtOJpPirQiGluuOtTPROBIFBQJ16SbWR8fEPgayBQWzgjnbWXP7mrq2iBkSJphPGMZD00GJzPpeqs`
 
 ### 4. **Prisma Schema Updates**
 
 The schema already has proper `subscriptionDuration` field:
+
 ```prisma
 subscriptionDuration SubscriptionDuration? // MONTHLY or YEARLY
 ```
@@ -157,6 +165,7 @@ The test keys are already in the `.env` file. To use in production:
    - Yearly: €999/year
 
 2. Copy price IDs to environment:
+
    ```env
    STRIPE_MONTHLY_PRICE_ID="price_xxxxx"
    STRIPE_YEARLY_PRICE_ID="price_xxxxx"
@@ -182,6 +191,7 @@ npm start
 ## Testing Checklist
 
 ### File Upload (Azure Blob Storage)
+
 - [ ] Upload image file
 - [ ] Upload document file
 - [ ] View uploaded files in dashboard
@@ -189,6 +199,7 @@ npm start
 - [ ] Verify file appears in Azure Storage Account
 
 ### Configurator Creation
+
 - [ ] Login as new user
 - [ ] Verify banner appears on empty dashboard
 - [ ] Click "Create Configurator" button
@@ -197,6 +208,7 @@ npm start
 - [ ] Verify banner disappears after creation
 
 ### Stripe Payment
+
 - [ ] Visit `/pricing` page
 - [ ] Click "Get Started" and register
 - [ ] Go to `/dashboard/billing`
@@ -210,21 +222,25 @@ npm start
 ## API Endpoints Updated
 
 ### File Management
+
 - `POST /api/files/upload` - Upload file to Azure Blob Storage
 - `GET /api/files/upload?filename=x&contentType=y` - Get signed upload URL
 - `GET /api/files/list` - List files
 - `DELETE /api/files/delete` - Delete file
 
 ### Configurator
+
 - `POST /api/configurator/create` - Create configurator
 - `GET /api/configurator/list` - List configurators
 
 ### Billing
+
 - `POST /api/billing/create-session` - Create Stripe checkout (accepts `duration`: MONTHLY/YEARLY)
 - `POST /api/billing/portal` - Access customer portal
 - `POST /api/billing/webhook` - Stripe webhook handler
 
 ### Health Check
+
 - `GET /api/health` - Check all services (Database, Stripe, Resend, Azure Storage)
 
 ---
@@ -241,6 +257,7 @@ npm start
 ## Troubleshooting
 
 ### Azure Blob Storage Issues
+
 - **Error: "Connection string invalid"**
   - Verify the connection string format
   - Ensure no extra spaces or quotes
@@ -250,6 +267,7 @@ npm start
   - Check AZURE_CONTAINER_NAME matches
 
 ### Stripe Issues
+
 - **Error: "Invalid API key"**
   - Keys are already configured for test mode
   - For production, replace with live keys
@@ -259,6 +277,7 @@ npm start
   - Add STRIPE_WEBHOOK_SECRET to environment
 
 ### Configurator Creation
+
 - **Modal doesn't appear**
   - Check if configurators already exist
   - Check browser console for errors
@@ -280,6 +299,7 @@ npm start
 ## Support
 
 For issues or questions:
+
 - Check the logs: `console` in browser, server logs in terminal
 - Review Prisma migrations: `npx prisma studio`
 - Test API endpoints: Use the health check endpoint
