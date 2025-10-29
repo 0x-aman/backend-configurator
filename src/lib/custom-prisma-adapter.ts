@@ -169,7 +169,10 @@ export function CustomPrismaAdapter(prisma: PrismaClient): Adapter {
       });
     },
 
-    async unlinkAccount({ providerAccountId, provider }) {
+    async unlinkAccount({
+      providerAccountId,
+      provider,
+    }: Pick<AdapterAccount, "providerAccountId" | "provider">) {
       await prisma.account.delete({
         where: {
           provider_providerAccountId: {
