@@ -1,9 +1,9 @@
 // Stripe client and helpers
-import Stripe from 'stripe';
-import { env } from '@/src/config/env';
+import Stripe from "stripe";
+import { env } from "@/src/config/env";
 
-export const stripe = new Stripe(env.STRIPE_SECRET_KEY || 'sk_test_dummy', {
-  apiVersion: '2024-11-20.acacia',
+export const stripe = new Stripe(env.STRIPE_SECRET_KEY || "sk_test_dummy", {
+  apiVersion: "2025-02-24.acacia",
 });
 
 export async function createCheckoutSession({
@@ -19,8 +19,8 @@ export async function createCheckoutSession({
 }) {
   return await stripe.checkout.sessions.create({
     customer: customerId,
-    mode: 'subscription',
-    payment_method_types: ['card'],
+    mode: "subscription",
+    payment_method_types: ["card"],
     line_items: [
       {
         price: priceId,
@@ -48,7 +48,10 @@ export async function createCustomer({
   });
 }
 
-export async function createCustomerPortalSession(customerId: string, returnUrl: string) {
+export async function createCustomerPortalSession(
+  customerId: string,
+  returnUrl: string
+) {
   return await stripe.billingPortal.sessions.create({
     customer: customerId,
     return_url: returnUrl,
@@ -59,7 +62,10 @@ export async function cancelSubscription(subscriptionId: string) {
   return await stripe.subscriptions.cancel(subscriptionId);
 }
 
-export async function updateSubscription(subscriptionId: string, priceId: string) {
+export async function updateSubscription(
+  subscriptionId: string,
+  priceId: string
+) {
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   return await stripe.subscriptions.update(subscriptionId, {
     items: [
@@ -71,6 +77,13 @@ export async function updateSubscription(subscriptionId: string, priceId: string
   });
 }
 
-export function constructWebhookEvent(payload: string | Buffer, signature: string) {
-  return stripe.webhooks.constructEvent(payload, signature, env.STRIPE_WEBHOOK_SECRET || 'whsec_dummy');
+export function constructWebhookEvent(
+  payload: string | Buffer,
+  signature: string
+) {
+  return stripe.webhooks.constructEvent(
+    payload,
+    signature,
+    env.STRIPE_WEBHOOK_SECRET || "whsec_dummy"
+  );
 }

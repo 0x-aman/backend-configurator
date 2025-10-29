@@ -25,6 +25,9 @@ import {
   AlertCircle,
   Key,
   Chrome,
+  Globe,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -39,6 +42,7 @@ interface ClientProfile {
   emailVerified: boolean;
   createdAt: string;
   lastLoginAt?: string;
+  allowedDomains?: string[];
 }
 
 function FormField({
@@ -98,6 +102,8 @@ export default function AccountPage() {
     password: "",
     confirm: "",
   });
+  const [domains, setDomains] = useState<string[]>([]);
+  const [newDomain, setNewDomain] = useState("");
   const [loading, setLoading] = useState({
     profile: false,
     password: false,
@@ -105,6 +111,7 @@ export default function AccountPage() {
     linkGoogle: false,
     unlinkGoogle: false,
     fetching: true,
+    domains: false,
   });
 
   const hasPassword = !!clientData?.passwordHash;
@@ -127,7 +134,7 @@ export default function AccountPage() {
       const res = await fetch("/api/auth/me");
       if (!res.ok) throw new Error("Failed to fetch profile");
       const { success, data } = await res.json();
-      
+
       if (success && data) {
         setClientData(data);
         setProfile({
@@ -136,6 +143,7 @@ export default function AccountPage() {
           companyName: data.companyName || "",
           phone: data.phone || "",
         });
+        setDomains(data.allowedDomains || []);
       }
     } catch (err) {
       console.error("Failed to fetch profile:", err);
@@ -162,7 +170,7 @@ export default function AccountPage() {
 
       const { success } = await res.json();
       if (!success) throw new Error("Failed to update profile");
-      
+
       await update({ name: profile.name });
       toast.success("Profile updated successfully!");
     } catch (err) {
@@ -233,7 +241,9 @@ export default function AccountPage() {
       const { success, error } = await res.json();
       if (!success) throw new Error(error || "Failed to add password");
 
-      toast.success("Password added successfully! You can now login with email and password.");
+      toast.success(
+        "Password added successfully! You can now login with email and password."
+      );
       setNewPasswordForOAuth({ password: "", confirm: "" });
       fetchProfile(); // Refresh to update hasPassword status
     } catch (err: any) {
@@ -248,8 +258,8 @@ export default function AccountPage() {
     setLoading((l) => ({ ...l, linkGoogle: true }));
     try {
       // Trigger Google OAuth flow
-      await signIn("google", { 
-        callbackUrl: "/dashboard/account?linked=true" 
+      await signIn("google", {
+        callbackUrl: "/dashboard/account?linked=true",
       });
     } catch (err) {
       console.error(err);
@@ -260,7 +270,9 @@ export default function AccountPage() {
 
   const unlinkGoogleAccount = async () => {
     if (!hasPassword) {
-      toast.error("Cannot unlink Google account without setting a password first!");
+      toast.error(
+        "Cannot unlink Google account without setting a password first!"
+      );
       return;
     }
 
@@ -285,6 +297,81 @@ export default function AccountPage() {
     }
   };
 
+  const validateDomain = (domain: string): boolean => {
+    // Basic domain validation regex
+    const domainRegex =
+      /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$/i;
+    return domainRegex.test(domain);
+  };
+
+  const addDomain = async () => {
+    const trimmedDomain = newDomain.trim().toLowerCase();
+
+    if (!trimmedDomain) {
+      toast.error("Please enter a domain");
+      return;
+    }
+
+    if (!validateDomain(trimmedDomain)) {
+      toast.error(
+        "Please enter a valid domain (e.g., example.com or subdomain.example.com)"
+      );
+      return;
+    }
+
+    if (domains.includes(trimmedDomain)) {
+      toast.error("This domain is already in your list");
+      return;
+    }
+
+    setLoading((l) => ({ ...l, domains: true }));
+
+    try {
+      const newDomains = [...domains, trimmedDomain];
+      const res = await fetch("/api/client/domains", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domains: newDomains }),
+      });
+
+      const { success, error } = await res.json();
+      if (!success) throw new Error(error || "Failed to add domain");
+
+      setDomains(newDomains);
+      setNewDomain("");
+      toast.success("Domain added successfully!");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Failed to add domain");
+    } finally {
+      setLoading((l) => ({ ...l, domains: false }));
+    }
+  };
+
+  const removeDomain = async (domainToRemove: string) => {
+    setLoading((l) => ({ ...l, domains: true }));
+
+    try {
+      const newDomains = domains.filter((d) => d !== domainToRemove);
+      const res = await fetch("/api/client/domains", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domains: newDomains }),
+      });
+
+      const { success, error } = await res.json();
+      if (!success) throw new Error(error || "Failed to remove domain");
+
+      setDomains(newDomains);
+      toast.success("Domain removed successfully!");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Failed to remove domain");
+    } finally {
+      setLoading((l) => ({ ...l, domains: false }));
+    }
+  };
+
   if (loading.fetching) {
     return (
       <div className="p-6 lg:p-8 flex items-center justify-center min-h-[400px]">
@@ -296,7 +383,10 @@ export default function AccountPage() {
   return (
     <div className="p-6 lg:p-8">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight" data-testid="account-settings-title">
+        <h1
+          className="text-3xl font-bold tracking-tight"
+          data-testid="account-settings-title"
+        >
           Account Settings
         </h1>
         <p className="text-muted-foreground mt-2">
@@ -358,7 +448,11 @@ export default function AccountPage() {
                 />
               </div>
 
-              <Button type="submit" disabled={loading.profile} data-testid="save-profile-button">
+              <Button
+                type="submit"
+                disabled={loading.profile}
+                data-testid="save-profile-button"
+              >
                 {loading.profile ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -389,19 +483,29 @@ export default function AccountPage() {
               <h3 className="font-medium text-sm">Active Login Methods</h3>
               <div className="flex flex-wrap gap-2">
                 {hasPassword && (
-                  <Badge variant="default" className="flex items-center gap-1" data-testid="auth-method-password">
+                  <Badge
+                    variant="default"
+                    className="flex items-center gap-1"
+                    data-testid="auth-method-password"
+                  >
                     <Key className="h-3 w-3" />
                     Password Login
                   </Badge>
                 )}
                 {hasGoogle && (
-                  <Badge variant="default" className="flex items-center gap-1" data-testid="auth-method-google">
+                  <Badge
+                    variant="default"
+                    className="flex items-center gap-1"
+                    data-testid="auth-method-google"
+                  >
                     <Chrome className="h-3 w-3" />
                     Google OAuth
                   </Badge>
                 )}
                 {!hasPassword && !hasGoogle && (
-                  <Badge variant="secondary">No authentication method set</Badge>
+                  <Badge variant="secondary">
+                    No authentication method set
+                  </Badge>
                 )}
               </div>
             </div>
@@ -461,7 +565,8 @@ export default function AccountPage() {
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    Add a password to enable email/password login and to be able to unlink your Google account.
+                    Add a password to enable email/password login and to be able
+                    to unlink your Google account.
                   </AlertDescription>
                 </Alert>
               )}
@@ -598,6 +703,93 @@ export default function AccountPage() {
                 </div>
               )
             )}
+          </CardContent>
+        </Card>
+
+        {/* Allowed Origins Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5" />
+              Allowed Origins
+            </CardTitle>
+            <CardDescription>
+              Manage domains allowed to access your configurator API
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newDomain">Add New Domain</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="newDomain"
+                  placeholder="example.com or subdomain.example.com"
+                  value={newDomain}
+                  onChange={(e) => setNewDomain(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addDomain();
+                    }
+                  }}
+                  disabled={loading.domains}
+                  data-testid="new-domain-input"
+                />
+                <Button
+                  onClick={addDomain}
+                  disabled={loading.domains || !newDomain.trim()}
+                  data-testid="add-domain-button"
+                >
+                  {loading.domains ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add
+                    </>
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Only requests from these domains will be able to access your
+                configurator via API
+              </p>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Current Domains</h3>
+              {domains.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  No domains added yet. Add domains to restrict API access.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {domains.map((domain) => (
+                    <div
+                      key={domain}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                      data-testid={`domain-item-${domain}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Globe className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-mono">{domain}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeDomain(domain)}
+                        disabled={loading.domains}
+                        data-testid={`remove-domain-${domain}`}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 

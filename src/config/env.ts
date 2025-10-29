@@ -24,7 +24,8 @@ export const env = {
   FROM_EMAIL: process.env.FROM_EMAIL || "noreply@example.com",
 
   // Azure Blob Storage
-  AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING || "",
+  AZURE_STORAGE_CONNECTION_STRING:
+    process.env.AZURE_STORAGE_CONNECTION_STRING || "",
   AZURE_CONTAINER_NAME: process.env.AZURE_CONTAINER_NAME || "uploads",
 
   // App

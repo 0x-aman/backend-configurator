@@ -256,13 +256,18 @@ export const ConfiguratorService = {
       accessToken: ____,
       createdAt,
       updatedAt,
-      ...data
+      ..._rest
     } = original;
 
-    return await this.create(clientId, {
-      ...data,
-      name: `${data.name} (Copy)`,
-    });
+    const payload = {
+      name: `${original.name} (Copy)`,
+      description: original.description ?? undefined,
+      currency: original.currency ?? undefined,
+      currencySymbol: original.currencySymbol ?? undefined,
+      themeId: original.themeId ?? undefined,
+    };
+
+    return await this.create(clientId, payload);
   },
 
   async publish(id: string, clientId: string): Promise<Configurator> {

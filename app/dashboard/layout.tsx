@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -73,18 +74,25 @@ export default function DashboardLayout({
     await signOut({ callbackUrl: "/login" });
   };
 
-  const userInitials = session?.user?.name
-    ?.split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase() || "U";
+  const userInitials =
+    session?.user?.name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase() || "U";
 
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile sidebar */}
       <div className="lg:hidden">
-        <div className="fixed inset-0 z-40 flex" style={{ display: sidebarOpen ? "flex" : "none" }}>
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
+        <div
+          className="fixed inset-0 z-40 flex"
+          style={{ display: sidebarOpen ? "flex" : "none" }}
+        >
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setSidebarOpen(false)}
+          />
           <div className="relative flex w-full max-w-xs flex-1 flex-col bg-card border-r border-border shadow-xl">
             <div className="absolute top-0 right-0 -mr-12 pt-2">
               <button
@@ -97,7 +105,14 @@ export default function DashboardLayout({
             </div>
             <div className="h-0 flex-1 overflow-y-auto pt-5 pb-4">
               <div className="flex flex-shrink-0 items-center px-4">
-                <h1 className="logo-text">KONFIGRA</h1>
+                <Image
+                  src="/logo.png"
+                  alt="Logo"
+                  width={256}
+                  height={64}
+                  className="h-12 w-auto"
+                  priority
+                />
               </div>
               <nav className="mt-8 space-y-1 px-2">
                 {navigation.map((item) => {
@@ -129,7 +144,9 @@ export default function DashboardLayout({
                 </Avatar>
                 <div className="ml-3 flex-1">
                   <p className="text-sm font-medium">{session?.user?.name}</p>
-                  <p className="text-xs text-muted-foreground">{session?.user?.email}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {session?.user?.email}
+                  </p>
                 </div>
               </div>
             </div>
@@ -141,7 +158,14 @@ export default function DashboardLayout({
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex flex-grow flex-col overflow-y-auto border-r border-border bg-card">
           <div className="flex flex-shrink-0 items-center px-6 py-6">
-            <h1 className="logo-text">KONFIGRA</h1>
+            <Image
+              src="/logo.png"
+              alt="Logo"
+              width={256}
+              height={64}
+              className="h-12 w-auto"
+              priority
+            />
           </div>
           <nav className="flex-1 space-y-1 px-3 pb-4">
             {navigation.map((item) => {
@@ -166,30 +190,44 @@ export default function DashboardLayout({
           <div className="border-t border-border p-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center w-full text-left hover:bg-accent rounded-lg p-2 transition-colors" data-testid="user-menu-trigger">
+                <button
+                  className="flex items-center w-full text-left hover:bg-accent rounded-lg p-2 transition-colors"
+                  data-testid="user-menu-trigger"
+                >
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={session?.user?.image || ""} />
                     <AvatarFallback>{userInitials}</AvatarFallback>
                   </Avatar>
                   <div className="ml-3 flex-1">
                     <p className="text-sm font-medium">{session?.user?.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{session?.user?.email}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {session?.user?.email}
+                    </p>
                   </div>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push("/dashboard/account")} data-testid="account-menu-item">
+                <DropdownMenuItem
+                  onClick={() => router.push("/dashboard/account")}
+                  data-testid="account-menu-item"
+                >
                   <User className="mr-2 h-4 w-4" />
                   Account Settings
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/dashboard/billing")} data-testid="billing-menu-item">
+                <DropdownMenuItem
+                  onClick={() => router.push("/dashboard/billing")}
+                  data-testid="billing-menu-item"
+                >
                   <CreditCard className="mr-2 h-4 w-4" />
                   Billing
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} data-testid="logout-menu-item">
+                <DropdownMenuItem
+                  onClick={handleSignOut}
+                  data-testid="logout-menu-item"
+                >
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign out
                 </DropdownMenuItem>
@@ -214,7 +252,14 @@ export default function DashboardLayout({
             <Menu className="h-6 w-6" />
           </button>
           <div className="flex-1 flex items-center justify-between px-4">
-            <h1 className="logo-text text-lg">KONFIGRA</h1>
+            <Image
+              src="/logo.png"
+              alt="Logo"
+              width={256}
+              height={64}
+              className="h-8 w-auto"
+              priority
+            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button data-testid="mobile-user-menu-trigger">
@@ -227,11 +272,15 @@ export default function DashboardLayout({
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push("/dashboard/account")}>
+                <DropdownMenuItem
+                  onClick={() => router.push("/dashboard/account")}
+                >
                   <User className="mr-2 h-4 w-4" />
                   Account Settings
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/dashboard/billing")}>
+                <DropdownMenuItem
+                  onClick={() => router.push("/dashboard/billing")}
+                >
                   <CreditCard className="mr-2 h-4 w-4" />
                   Billing
                 </DropdownMenuItem>
@@ -244,9 +293,7 @@ export default function DashboardLayout({
             </DropdownMenu>
           </div>
         </div>
-        <main className="flex-1">
-          {children}
-        </main>
+        <main className="flex-1">{children}</main>
       </div>
     </div>
   );

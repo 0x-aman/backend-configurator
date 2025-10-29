@@ -1,8 +1,8 @@
 // Admin - Get all clients
-import { NextRequest } from 'next/server';
-import { authenticateRequest } from '@/src/middleware/auth';
-import { AdminService } from '@/src/services/admin.service';
-import { success, fail } from '@/src/lib/response';
+import { NextRequest } from "next/server";
+import { authenticateRequest } from "@/src/middleware/auth";
+import { AdminService } from "@/src/services/admin.service";
+import { success, fail } from "@/src/lib/response";
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,13 +12,13 @@ export async function GET(request: NextRequest) {
     // For now, anyone authenticated can access (add proper admin middleware)
 
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "50");
 
-    const result = await AdminService.getAllClients(page, limit);
+    const result = await AdminService.getClients(page, limit);
 
     return success(result);
   } catch (error: any) {
-    return fail(error.message, 'ADMIN_ERROR', error.statusCode || 500);
+    return fail(error.message, "ADMIN_ERROR", error.statusCode || 500);
   }
 }
