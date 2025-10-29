@@ -2,14 +2,14 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import { CustomPrismaAdapter } from "@/src/lib/custom-prisma-adapter";
 import { prisma } from "@/src/lib/prisma";
 import { verifyPassword } from "@/src/lib/auth";
 import { ClientService } from "@/src/services/client.service";
 import { env } from "@/src/config/env";
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: CustomPrismaAdapter(prisma),
   providers: [
     GoogleProvider({
       clientId: env.GOOGLE_CLIENT_ID,
@@ -55,67 +55,78 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user, account, profile }) {
       if (account?.provider === "google") {
-        // Find or create client with Google ID
-        let client = await prisma.client.findUnique({
-          where: { email: user.email! }
+        // Check if user already exists (adapter creates it automatically)
+        const existingUser = await prisma.user.findUnique({
+          where: { email: user.email! },
+          include: { client: true },
         });
 
-        if (client) {
-          // Link Google account to existing client if not already linked
-          if (!client.googleId) {
-            client = await prisma.client.update({
-              where: { id: client.id },
-              data: { 
+        if (existingUser) {
+          // Link to existing client or create new client if needed
+          if (!existingUser.clientId) {
+            // Create client for this user
+            const client = await prisma.client.create({
+              data: {
+                email: user.email!,
+                name: user.name || "User",
                 googleId: account.providerAccountId,
                 emailVerified: true,
                 lastLoginAt: new Date(),
-              }
+              },
             });
+
+            // Link user to client
+            await prisma.user.update({
+              where: { id: existingUser.id },
+              data: { clientId: client.id },
+            });
+
+            user.id = existingUser.id;
           } else {
-            // Just update last login
+            // Update existing client
             await prisma.client.update({
-              where: { id: client.id },
-              data: { lastLoginAt: new Date() }
+              where: { id: existingUser.clientId },
+              data: {
+                googleId: account.providerAccountId,
+                emailVerified: true,
+                lastLoginAt: new Date(),
+              },
             });
+
+            user.id = existingUser.id;
           }
-        } else {
-          // Create new client for first-time Google OAuth user
-          client = await ClientService.create({
-            email: user.email!,
-            name: user.name || "User",
-            googleId: account.providerAccountId,
-          });
         }
-        
-        // CRITICAL: Set user.id so it gets passed to JWT callback
-        user.id = client.id;
       }
       return true;
     },
     async session({ session, token }) {
       if (token.sub) {
-        // Fetch fresh client data to include in session
-        const client = await prisma.client.findUnique({
+        // Fetch user and their client data
+        const user = await prisma.user.findUnique({
           where: { id: token.sub },
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            avatarUrl: true,
-            subscriptionStatus: true,
-            subscriptionDuration: true,
-          }
+          include: {
+            client: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+                avatarUrl: true,
+                subscriptionStatus: true,
+                subscriptionDuration: true,
+              },
+            },
+          },
         });
 
-        if (client) {
+        if (user?.client) {
           session.user = {
             ...session.user,
-            id: client.id,
-            email: client.email,
-            name: client.name,
-            avatarUrl: client.avatarUrl,
-            subscriptionStatus: client.subscriptionStatus,
-            subscriptionDuration: client.subscriptionDuration,
+            id: user.client.id,
+            email: user.client.email,
+            name: user.client.name,
+            avatarUrl: user.client.avatarUrl,
+            subscriptionStatus: user.client.subscriptionStatus,
+            subscriptionDuration: user.client.subscriptionDuration,
           } as any;
         }
       }
@@ -126,18 +137,18 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.sub = user.id;
       }
-      
-      // For Google OAuth, ensure we have the client ID
+
+      // For Google OAuth, ensure we have the user ID
       if (account?.provider === "google" && user?.email) {
-        const client = await prisma.client.findUnique({
+        const existingUser = await prisma.user.findUnique({
           where: { email: user.email },
-          select: { id: true }
+          select: { id: true },
         });
-        if (client) {
-          token.sub = client.id;
+        if (existingUser) {
+          token.sub = existingUser.id;
         }
       }
-      
+
       return token;
     },
   },

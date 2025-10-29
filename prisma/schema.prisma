@@ -145,12 +145,11 @@ model Client {
   quotes          Quote[]
   files           File[]
   analyticsEvents AnalyticsEvent[]
+  user            User?
 
   // Audit
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  Account   Account[]
-  Session   Session[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([email])
   @@index([apiKey])
@@ -655,9 +654,32 @@ model ApiLog {
   @@map("api_logs")
 }
 
+// ================================
+// NEXT-AUTH MODELS
+// ================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  clientId      String?   @unique
+
+  // Relations
+  client   Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  accounts Account[]
+  sessions Session[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
 model Account {
   id                String  @id @default(cuid())
-  clientId          String
+  userId            String
   type              String
   provider          String
   providerAccountId String
@@ -668,17 +690,22 @@ model Account {
   scope             String?
   id_token          String? @db.Text
   session_state     String?
-  client            Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@map("accounts")
 }
 
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique
-  clientId     String
+  userId       String
   expires      DateTime
-  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
 }
 
 model VerificationToken {
@@ -687,4 +714,5 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+  @@map("verification_tokens")
 }

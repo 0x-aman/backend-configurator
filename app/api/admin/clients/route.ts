@@ -14,10 +14,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
-
-    const result = await AdminService.getClients(page, limit);
-
-    return success(result);
   } catch (error: any) {
     return fail(error.message, "ADMIN_ERROR", error.statusCode || 500);
   }
