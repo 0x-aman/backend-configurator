@@ -16,6 +16,7 @@ enum SubscriptionStatus {
   ACTIVE
   PAST_DUE
   CANCELED
+  TRIALING
   INACTIVE
   SUSPENDED
 }
@@ -108,7 +109,7 @@ model Client {
   resetTokenExpires DateTime?
 
   // Billing & Subscription
-  subscriptionStatus   SubscriptionStatus    @default(INACTIVE)
+  subscriptionStatus   SubscriptionStatus    @default(TRIALING)
   subscriptionDuration SubscriptionDuration?
   stripeCustomerId     String?               @unique
   stripeSubscriptionId String?               @unique

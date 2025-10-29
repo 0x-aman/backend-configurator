@@ -1,287 +1,59 @@
-import {
-  PrismaClient,
-  SubscriptionStatus,
-  SubscriptionDuration,
-} from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { hash } from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Starting comprehensive seed with TONS of data...");
+  console.log("🌱 Starting seed...");
 
-  // ========================================
-  // CREATE MULTIPLE CLIENTS WITH DIFFERENT STATUSES
-  // ========================================
-
-  const clients = [];
-
-  // Client 1: Active Monthly Subscriber (Owner of most configurators)
-  const client1 = await prisma.client.create({
+  // Create a demo client
+  const client = await prisma.client.create({
     data: {
-      email: "john.furniture@example.com",
+      email: "demo@example.com",
       passwordHash: await hash("password123", 10),
-      name: "John Smith",
-      companyName: "Luxury Furniture Co.",
+      name: "Demo Client",
+      companyName: "Demo Furniture Co.",
       emailVerified: true,
-      subscriptionStatus: "ACTIVE" as SubscriptionStatus,
-      subscriptionDuration: "MONTHLY" as SubscriptionDuration,
-      stripeCustomerId: "cus_test_123456",
-      stripeSubscriptionId: "sub_test_123456",
-      stripePriceId: "price_monthly_99",
-      subscriptionEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      apiKey: "sk_live_john_furniture_12345",
-      publicKey: "pk_live_john_furniture_12345",
-      domain: "luxury-furniture.com",
-      allowedDomains: ["luxury-furniture.com", "www.luxury-furniture.com"],
-      monthlyRequests: 1250,
-      requestLimit: 10000,
-      phone: "+1-555-0101",
-      avatarUrl: "https://i.pravatar.cc/150?img=12",
-    },
-  });
-  clients.push(client1);
-
-  // Create User for client1 (for Next-Auth)
-  await prisma.user.create({
-    data: {
-      email: client1.email,
-      name: client1.name,
-      emailVerified: new Date(),
-      clientId: client1.id,
+      subscriptionStatus: "ACTIVE",
+      subscriptionDuration: "MONTHLY",
+      apiKey: "demo_api_key_123456789",
+      publicKey: "demo_public_key_123456789",
+      domain: "demo-furniture.com",
+      allowedDomains: ["demo-furniture.com", "localhost:3000"],
+      monthlyRequests: 0,
+      requestLimit: 100000,
     },
   });
 
-  console.log("✅ Created Client 1: John Smith (ACTIVE - MONTHLY)");
+  console.log("✅ Created client:", client.email);
 
-  // Client 2: Active Yearly Subscriber
-  const client2 = await prisma.client.create({
+  // Create a theme
+  const theme = await prisma.theme.create({
     data: {
-      email: "sarah.industrial@example.com",
-      passwordHash: await hash("password456", 10),
-      name: "Sarah Johnson",
-      companyName: "Precision Industrial Solutions",
-      emailVerified: true,
-      subscriptionStatus: "ACTIVE" as SubscriptionStatus,
-      subscriptionDuration: "YEARLY" as SubscriptionDuration,
-      stripeCustomerId: "cus_test_789012",
-      stripeSubscriptionId: "sub_test_789012",
-      stripePriceId: "price_yearly_999",
-      subscriptionEndsAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-      apiKey: "sk_live_sarah_industrial_67890",
-      publicKey: "pk_live_sarah_industrial_67890",
-      domain: "precision-industrial.com",
-      allowedDomains: [
-        "precision-industrial.com",
-        "portal.precision-industrial.com",
-      ],
-      monthlyRequests: 3450,
-      requestLimit: 50000,
-      phone: "+1-555-0202",
-      avatarUrl: "https://i.pravatar.cc/150?img=5",
-      googleId: "google_sarah_12345",
-    },
-  });
-  clients.push(client2);
-
-  await prisma.user.create({
-    data: {
-      email: client2.email,
-      name: client2.name,
-      emailVerified: new Date(),
-      image: client2.avatarUrl,
-      clientId: client2.id,
-    },
-  });
-
-  console.log("✅ Created Client 2: Sarah Johnson (ACTIVE - YEARLY)");
-
-  // Client 3: Inactive (New Signup)
-  const client3 = await prisma.client.create({
-    data: {
-      email: "mike.newbie@example.com",
-      passwordHash: await hash("password789", 10),
-      name: "Mike Chen",
-      companyName: "Chen Design Studio",
-      emailVerified: true,
-      subscriptionStatus: "INACTIVE" as SubscriptionStatus,
-      apiKey: "sk_test_mike_chen_24680",
-      publicKey: "pk_test_mike_chen_24680",
-      monthlyRequests: 15,
-      requestLimit: 1000,
-      phone: "+1-555-0303",
-    },
-  });
-  clients.push(client3);
-
-  await prisma.user.create({
-    data: {
-      email: client3.email,
-      name: client3.name,
-      emailVerified: new Date(),
-      clientId: client3.id,
-    },
-  });
-
-  console.log("✅ Created Client 3: Mike Chen (INACTIVE)");
-
-  // Client 4: Past Due
-  const client4 = await prisma.client.create({
-    data: {
-      email: "lisa.pastdue@example.com",
-      passwordHash: await hash("password321", 10),
-      name: "Lisa Anderson",
-      companyName: "Anderson Enterprises",
-      emailVerified: true,
-      subscriptionStatus: "PAST_DUE" as SubscriptionStatus,
-      subscriptionDuration: "MONTHLY" as SubscriptionDuration,
-      stripeCustomerId: "cus_test_345678",
-      stripeSubscriptionId: "sub_test_345678",
-      subscriptionEndsAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
-      apiKey: "sk_live_lisa_anderson_13579",
-      publicKey: "pk_live_lisa_anderson_13579",
-      monthlyRequests: 890,
-      requestLimit: 10000,
-      phone: "+1-555-0404",
-    },
-  });
-  clients.push(client4);
-
-  console.log("✅ Created Client 4: Lisa Anderson (PAST_DUE)");
-
-  // Client 5: Canceled Subscription
-  const client5 = await prisma.client.create({
-    data: {
-      email: "tom.canceled@example.com",
-      passwordHash: await hash("password654", 10),
-      name: "Tom Williams",
-      companyName: "Williams Manufacturing",
-      emailVerified: true,
-      subscriptionStatus: "CANCELED" as SubscriptionStatus,
-      stripeCustomerId: "cus_test_901234",
-      subscriptionEndsAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // 15 days ago
-      apiKey: "sk_live_tom_williams_97531",
-      publicKey: "pk_live_tom_williams_97531",
-      monthlyRequests: 25,
-      requestLimit: 10000,
-      phone: "+1-555-0505",
-    },
-  });
-  clients.push(client5);
-
-  console.log("✅ Created Client 5: Tom Williams (CANCELED)");
-
-  // ========================================
-  // CREATE THEMES
-  // ========================================
-
-  const themes = [];
-
-  // Theme 1: Modern Light (for Client 1)
-  const theme1 = await prisma.theme.create({
-    data: {
-      clientId: client1.id,
-      name: "Modern Light",
-      description: "Clean and minimalist light theme with blue accents",
+      clientId: client.id,
+      name: "Modern Light Theme",
+      description: "Clean and modern light theme",
       isDefault: true,
-      isActive: true,
-      primaryColor: "220 70% 50%", // Blue
-      secondaryColor: "340 70% 50%", // Pink
-      accentColor: "280 70% 50%", // Purple
+      primaryColor: "220 70% 50%",
+      secondaryColor: "340 70% 50%",
+      accentColor: "280 70% 50%",
       backgroundColor: "0 0% 100%",
       surfaceColor: "0 0% 98%",
       textColor: "0 0% 10%",
       fontFamily: "Inter, sans-serif",
       borderRadius: "0.5rem",
-      spacingUnit: "1rem",
-      maxWidth: "1200px",
     },
   });
-  themes.push(theme1);
 
-  // Theme 2: Dark Professional (for Client 1)
-  const theme2 = await prisma.theme.create({
+  console.log("✅ Created theme:", theme.name);
+
+  // Create a configurator
+  const configurator = await prisma.configurator.create({
     data: {
-      clientId: client1.id,
-      name: "Dark Professional",
-      description: "Elegant dark theme for luxury brands",
-      isDefault: false,
-      isActive: true,
-      primaryColor: "210 40% 60%", // Muted blue
-      secondaryColor: "45 100% 60%", // Gold
-      accentColor: "180 30% 50%", // Teal
-      backgroundColor: "0 0% 10%",
-      surfaceColor: "0 0% 15%",
-      textColor: "0 0% 95%",
-      textColorMode: "WHITE",
-      fontFamily: "Montserrat, sans-serif",
-      borderRadius: "0.25rem",
-      spacingUnit: "1.25rem",
-      maxWidth: "1400px",
-    },
-  });
-  themes.push(theme2);
-
-  // Theme 3: Industrial (for Client 2)
-  const theme3 = await prisma.theme.create({
-    data: {
-      clientId: client2.id,
-      name: "Industrial Gray",
-      description: "Professional theme for industrial clients",
-      isDefault: true,
-      isActive: true,
-      primaryColor: "200 10% 40%", // Steel gray
-      secondaryColor: "30 100% 50%", // Orange
-      accentColor: "0 0% 20%", // Dark gray
-      backgroundColor: "0 0% 96%",
-      surfaceColor: "0 0% 100%",
-      textColor: "0 0% 15%",
-      fontFamily: "Roboto, sans-serif",
-      borderRadius: "0.125rem",
-      spacingUnit: "0.875rem",
-      maxWidth: "1600px",
-    },
-  });
-  themes.push(theme3);
-
-  // Theme 4: Colorful Creative (for Client 3)
-  const theme4 = await prisma.theme.create({
-    data: {
-      clientId: client3.id,
-      name: "Vibrant Creative",
-      description: "Bold and colorful theme for creative industries",
-      isDefault: true,
-      isActive: true,
-      primaryColor: "340 85% 60%", // Hot pink
-      secondaryColor: "160 80% 50%", // Turquoise
-      accentColor: "50 100% 55%", // Yellow
-      backgroundColor: "0 0% 99%",
-      surfaceColor: "0 0% 100%",
-      textColor: "0 0% 5%",
-      fontFamily: "Poppins, sans-serif",
-      borderRadius: "1rem",
-      spacingUnit: "1.5rem",
-      maxWidth: "1300px",
-    },
-  });
-  themes.push(theme4);
-
-  console.log("✅ Created 4 themes");
-
-  // ========================================
-  // CREATE CONFIGURATORS
-  // ========================================
-
-  const configurators = [];
-
-  // Configurator 1: Custom Sofa Designer (Client 1)
-  const sofa = await prisma.configurator.create({
-    data: {
-      clientId: client1.id,
-      themeId: theme1.id,
-      name: "Custom Sofa Designer",
-      description:
-        "Design your perfect luxury sofa with premium materials and customization options",
+      clientId: client.id,
+      themeId: theme.id,
+      name: "Custom Sofa Configurator",
+      description: "Design your perfect custom sofa",
       slug: "custom-sofa",
       isActive: true,
       isPublished: true,
@@ -292,277 +64,93 @@ async function main() {
       requireEmail: true,
       autoPricing: true,
       showTotal: true,
-      metaTitle: "Custom Sofa Designer | Luxury Furniture Co.",
+      metaTitle: "Custom Sofa Designer | Demo Furniture",
       metaDescription:
-        "Design your dream sofa with our interactive 3D configurator. Choose size, fabric, color, and features.",
-      ogImage: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc",
+        "Design your perfect custom sofa with our interactive configurator",
     },
   });
-  configurators.push(sofa);
 
-  // Configurator 2: Office Desk Builder (Client 1)
-  const desk = await prisma.configurator.create({
+  console.log("✅ Created configurator:", configurator.name);
+
+  // Create categories and options
+
+  // Category 1: Size
+  const sizeCategory = await prisma.category.create({
     data: {
-      clientId: client1.id,
-      themeId: theme2.id,
-      name: "Executive Desk Builder",
-      description:
-        "Create your ideal workspace with our premium desk configurator",
-      slug: "executive-desk",
-      isActive: true,
-      isPublished: true,
-      publishedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      currency: "USD",
-      currencySymbol: "$",
-      allowQuotes: true,
-      requireEmail: true,
-      autoPricing: true,
-      showTotal: true,
-      metaTitle: "Executive Desk Builder | Custom Office Furniture",
-      metaDescription:
-        "Build your perfect executive desk with drawers, cable management, and premium finishes.",
-    },
-  });
-  configurators.push(desk);
-
-  // Configurator 3: Water Jet Cutting (Client 2)
-  const waterjet = await prisma.configurator.create({
-    data: {
-      clientId: client2.id,
-      themeId: theme3.id,
-      name: "Industrial Water Jet Cutting Service",
-      description:
-        "Configure custom water jet cutting for metal, stone, glass, and composite materials",
-      slug: "waterjet-cutting",
-      isActive: true,
-      isPublished: true,
-      publishedAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-      currency: "USD",
-      currencySymbol: "$",
-      allowQuotes: true,
-      requireEmail: true,
-      autoPricing: true,
-      showTotal: true,
-      metaTitle: "Water Jet Cutting Service | Precision Industrial",
-      metaDescription:
-        "Professional water jet cutting services with ±0.025mm precision for industrial applications.",
-      ogImage: "https://images.unsplash.com/photo-1581092160607-ee67e74599ef",
-    },
-  });
-  configurators.push(waterjet);
-
-  // Configurator 4: CNC Machining (Client 2)
-  const cnc = await prisma.configurator.create({
-    data: {
-      clientId: client2.id,
-      themeId: theme3.id,
-      name: "CNC Machining Quote Calculator",
-      description: "Get instant quotes for precision CNC machining services",
-      slug: "cnc-machining",
-      isActive: true,
-      isPublished: true,
-      publishedAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
-      currency: "USD",
-      currencySymbol: "$",
-      allowQuotes: true,
-      requireEmail: true,
-      autoPricing: true,
-      showTotal: true,
-      metaTitle: "CNC Machining Quotes | 3-Axis, 4-Axis, 5-Axis",
-      metaDescription:
-        "Professional CNC machining for prototypes and production. Aluminum, steel, titanium, and plastics.",
-    },
-  });
-  configurators.push(cnc);
-
-  // Configurator 5: Kitchen Cabinet Designer (Client 1)
-  const kitchen = await prisma.configurator.create({
-    data: {
-      clientId: client1.id,
-      themeId: theme1.id,
-      name: "Kitchen Cabinet Designer",
-      description:
-        "Design your dream kitchen with custom cabinets, countertops, and hardware",
-      slug: "kitchen-cabinets",
-      isActive: true,
-      isPublished: false, // Draft
-      currency: "USD",
-      currencySymbol: "$",
-      allowQuotes: true,
-      requireEmail: true,
-      autoPricing: false,
-      showTotal: false,
-      metaTitle: "Custom Kitchen Cabinet Designer",
-      metaDescription:
-        "Design custom kitchen cabinets with our 3D configurator tool.",
-    },
-  });
-  configurators.push(kitchen);
-
-  // Configurator 6: T-Shirt Customizer (Client 3)
-  const tshirt = await prisma.configurator.create({
-    data: {
-      clientId: client3.id,
-      themeId: theme4.id,
-      name: "Custom T-Shirt Designer",
-      description:
-        "Create your own custom t-shirt with text, colors, and graphics",
-      slug: "tshirt-designer",
-      isActive: true,
-      isPublished: true,
-      publishedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-      currency: "USD",
-      currencySymbol: "$",
-      allowQuotes: false,
-      requireEmail: false,
-      autoPricing: true,
-      showTotal: true,
-      metaTitle: "Custom T-Shirt Designer | Print Your Design",
-      metaDescription:
-        "Design and order custom t-shirts online. Add text, choose colors, upload images.",
-    },
-  });
-  configurators.push(tshirt);
-
-  console.log("✅ Created 6 configurators");
-
-  // ========================================
-  // SOFA CONFIGURATOR - DETAILED CATEGORIES & OPTIONS
-  // ========================================
-
-  // Size Category
-  const sofaSize = await prisma.category.create({
-    data: {
-      configuratorId: sofa.id,
+      configuratorId: configurator.id,
       name: "Sofa Size",
       categoryType: "DIMENSION",
-      description:
-        "Choose your sofa size based on your space and seating needs",
-      helpText:
-        "Measure your space carefully. Allow 12 inches on each side for proper room flow.",
+      description: "Choose your sofa size",
       isPrimary: true,
       isRequired: true,
       orderIndex: 1,
       icon: "📏",
-      imageUrl: "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e",
     },
   });
 
   await prisma.option.createMany({
     data: [
       {
-        categoryId: sofaSize.id,
-        label: "Loveseat (2-Seater)",
-        description:
-          "Cozy seating for two. Perfect for apartments and small living rooms.",
-        price: 899.0,
+        categoryId: sizeCategory.id,
+        label: "Small (2-Seater)",
+        description: "Perfect for apartments and small spaces",
+        price: 899.99,
         cost: 450.0,
-        sku: "SOFA-SIZE-2S",
+        sku: "SOFA-SIZE-SM",
         orderIndex: 1,
-        isActive: true,
         isDefault: false,
-        inStock: true,
-        stockQuantity: 25,
-        dimensions: { width: 150, depth: 90, height: 85, seatHeight: 45 },
-        weight: 35.5,
-        attributeValues: {
-          seats: 2,
-          width_cm: 150,
-          depth_cm: 90,
-          height_cm: 85,
-        },
-        imageUrl: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc",
-        thumbnailUrl:
-          "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400",
-        gallery: [
-          "https://images.unsplash.com/photo-1555041469-a586c61ea9bc",
-          "https://images.unsplash.com/photo-1540574163026-643ea20ade25",
-        ],
+        dimensions: { width: 150, depth: 85, height: 85 },
+        attributeValues: { seats: 2, width_cm: 150, depth_cm: 85 },
       },
       {
-        categoryId: sofaSize.id,
-        label: "Standard (3-Seater)",
-        description:
-          "Our most popular size. Comfortable seating for three people with balanced proportions.",
-        price: 1299.0,
-        cost: 650.0,
-        sku: "SOFA-SIZE-3S",
+        categoryId: sizeCategory.id,
+        label: "Medium (3-Seater)",
+        description: "Most popular size for living rooms",
+        price: 1199.99,
+        cost: 600.0,
+        sku: "SOFA-SIZE-MD",
         orderIndex: 2,
-        isActive: true,
         isDefault: true,
         isPopular: true,
-        inStock: true,
-        stockQuantity: 45,
-        dimensions: { width: 210, depth: 90, height: 85, seatHeight: 45 },
-        weight: 48.0,
-        attributeValues: {
-          seats: 3,
-          width_cm: 210,
-          depth_cm: 90,
-          height_cm: 85,
-        },
-        imageUrl:
-          "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e",
-        thumbnailUrl:
-          "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=400",
+        dimensions: { width: 200, depth: 85, height: 85 },
+        attributeValues: { seats: 3, width_cm: 200, depth_cm: 85 },
       },
       {
-        categoryId: sofaSize.id,
-        label: "Grand (4-Seater)",
-        description:
-          "Spacious family sofa with room for everyone. Ideal for larger living spaces.",
-        price: 1799.0,
-        cost: 900.0,
-        sku: "SOFA-SIZE-4S",
+        categoryId: sizeCategory.id,
+        label: "Large (4-Seater)",
+        description: "Spacious seating for the whole family",
+        price: 1599.99,
+        cost: 800.0,
+        sku: "SOFA-SIZE-LG",
         orderIndex: 3,
-        isActive: true,
         isDefault: false,
-        inStock: true,
-        stockQuantity: 18,
-        dimensions: { width: 270, depth: 90, height: 85, seatHeight: 45 },
-        weight: 62.5,
-        attributeValues: {
-          seats: 4,
-          width_cm: 270,
-          depth_cm: 90,
-          height_cm: 85,
-        },
+        dimensions: { width: 250, depth: 85, height: 85 },
+        attributeValues: { seats: 4, width_cm: 250, depth_cm: 85 },
       },
       {
-        categoryId: sofaSize.id,
-        label: "Estate (5-Seater)",
-        description:
-          "Maximum luxury and space. Perfect for entertaining or large families.",
-        price: 2399.0,
-        cost: 1200.0,
-        sku: "SOFA-SIZE-5S",
+        categoryId: sizeCategory.id,
+        label: "Extra Large (5-Seater)",
+        description: "Maximum comfort and space",
+        price: 1999.99,
+        cost: 1000.0,
+        sku: "SOFA-SIZE-XL",
         orderIndex: 4,
-        isActive: true,
         isDefault: false,
-        inStock: true,
-        stockQuantity: 8,
-        lowStockThreshold: 10,
-        dimensions: { width: 330, depth: 90, height: 85, seatHeight: 45 },
-        weight: 78.0,
-        attributeValues: {
-          seats: 5,
-          width_cm: 330,
-          depth_cm: 90,
-          height_cm: 85,
-        },
+        dimensions: { width: 300, depth: 85, height: 85 },
+        attributeValues: { seats: 5, width_cm: 300, depth_cm: 85 },
       },
     ],
   });
 
-  // Fabric Color Category
-  const sofaColor = await prisma.category.create({
+  console.log("✅ Created Size category with 4 options");
+
+  // Category 2: Fabric Color
+  const colorCategory = await prisma.category.create({
     data: {
-      configuratorId: sofa.id,
+      configuratorId: configurator.id,
       name: "Fabric Color",
       categoryType: "COLOR",
-      description: "Select from our curated palette of premium fabric colors",
-      helpText:
-        "Request free fabric swatches to see colors in your home lighting.",
+      description: "Select your preferred fabric color",
       isPrimary: false,
       isRequired: true,
       orderIndex: 2,
@@ -573,191 +161,91 @@ async function main() {
   await prisma.option.createMany({
     data: [
       {
-        categoryId: sofaColor.id,
+        categoryId: colorCategory.id,
         label: "Cloud Gray",
-        description: "Elegant light gray - timeless and versatile",
+        description: "Elegant light gray",
         price: 0,
-        sku: "FAB-CLOUD",
+        cost: 0,
+        sku: "FAB-GRAY",
         color: "Gray",
         hexColor: "#D3D3D3",
         orderIndex: 1,
         isDefault: true,
-        isPopular: true,
-        inStock: true,
-        attributeValues: {
-          colorName: "Cloud Gray",
-          hex: "#D3D3D3",
-          colorFamily: "Neutral",
-        },
+        attributeValues: { color_name: "Cloud Gray", hex: "#D3D3D3" },
       },
       {
-        categoryId: sofaColor.id,
+        categoryId: colorCategory.id,
         label: "Navy Blue",
-        description: "Classic navy - sophisticated and calming",
-        price: 75.0,
-        cost: 35.0,
+        description: "Classic navy blue",
+        price: 50,
+        cost: 25,
         sku: "FAB-NAVY",
         color: "Blue",
-        hexColor: "#001F3F",
+        hexColor: "#000080",
         orderIndex: 2,
         isPopular: true,
-        inStock: true,
-        attributeValues: {
-          colorName: "Navy Blue",
-          hex: "#001F3F",
-          colorFamily: "Blue",
-        },
+        attributeValues: { color_name: "Navy Blue", hex: "#000080" },
       },
       {
-        categoryId: sofaColor.id,
+        categoryId: colorCategory.id,
         label: "Charcoal Black",
-        description: "Deep charcoal - modern and dramatic",
-        price: 75.0,
-        cost: 35.0,
-        sku: "FAB-CHARCOAL",
+        description: "Sophisticated black",
+        price: 50,
+        cost: 25,
+        sku: "FAB-BLACK",
         color: "Black",
         hexColor: "#36454F",
         orderIndex: 3,
-        inStock: true,
-        attributeValues: {
-          colorName: "Charcoal Black",
-          hex: "#36454F",
-          colorFamily: "Neutral",
-        },
+        attributeValues: { color_name: "Charcoal Black", hex: "#36454F" },
       },
       {
-        categoryId: sofaColor.id,
+        categoryId: colorCategory.id,
         label: "Cream Beige",
-        description: "Warm beige - inviting and cozy",
+        description: "Warm beige tone",
         price: 0,
-        sku: "FAB-CREAM",
+        cost: 0,
+        sku: "FAB-BEIGE",
         color: "Beige",
         hexColor: "#F5F5DC",
         orderIndex: 4,
-        inStock: true,
-        attributeValues: {
-          colorName: "Cream Beige",
-          hex: "#F5F5DC",
-          colorFamily: "Neutral",
-        },
+        attributeValues: { color_name: "Cream Beige", hex: "#F5F5DC" },
       },
       {
-        categoryId: sofaColor.id,
+        categoryId: colorCategory.id,
         label: "Forest Green",
-        description: "Rich emerald green - bold and luxurious",
-        price: 100.0,
-        cost: 50.0,
-        sku: "FAB-FOREST",
+        description: "Rich forest green",
+        price: 75,
+        cost: 35,
+        sku: "FAB-GREEN",
         color: "Green",
-        hexColor: "#2C5F2D",
+        hexColor: "#228B22",
         orderIndex: 5,
-        inStock: true,
-        attributeValues: {
-          colorName: "Forest Green",
-          hex: "#2C5F2D",
-          colorFamily: "Green",
-        },
+        attributeValues: { color_name: "Forest Green", hex: "#228B22" },
       },
       {
-        categoryId: sofaColor.id,
+        categoryId: colorCategory.id,
         label: "Burgundy Red",
-        description: "Deep wine red - elegant and warm",
-        price: 100.0,
-        cost: 50.0,
+        description: "Deep burgundy",
+        price: 75,
+        cost: 35,
         sku: "FAB-BURG",
         color: "Red",
         hexColor: "#800020",
         orderIndex: 6,
-        inStock: true,
-        attributeValues: {
-          colorName: "Burgundy Red",
-          hex: "#800020",
-          colorFamily: "Red",
-        },
-      },
-      {
-        categoryId: sofaColor.id,
-        label: "Mustard Yellow",
-        description: "Vibrant mustard - cheerful and contemporary",
-        price: 100.0,
-        cost: 50.0,
-        sku: "FAB-MUSTARD",
-        color: "Yellow",
-        hexColor: "#FFDB58",
-        orderIndex: 7,
-        inStock: true,
-        stockQuantity: 12,
-        lowStockThreshold: 15,
-        attributeValues: {
-          colorName: "Mustard Yellow",
-          hex: "#FFDB58",
-          colorFamily: "Yellow",
-        },
-      },
-      {
-        categoryId: sofaColor.id,
-        label: "Blush Pink",
-        description: "Soft blush pink - romantic and modern",
-        price: 100.0,
-        cost: 50.0,
-        sku: "FAB-BLUSH",
-        color: "Pink",
-        hexColor: "#FFB6C1",
-        orderIndex: 8,
-        inStock: true,
-        attributeValues: {
-          colorName: "Blush Pink",
-          hex: "#FFB6C1",
-          colorFamily: "Pink",
-        },
-      },
-      {
-        categoryId: sofaColor.id,
-        label: "Sage Green",
-        description: "Muted sage - calming and natural",
-        price: 100.0,
-        cost: 50.0,
-        sku: "FAB-SAGE",
-        color: "Green",
-        hexColor: "#9CAF88",
-        orderIndex: 9,
-        isPopular: true,
-        inStock: true,
-        attributeValues: {
-          colorName: "Sage Green",
-          hex: "#9CAF88",
-          colorFamily: "Green",
-        },
-      },
-      {
-        categoryId: sofaColor.id,
-        label: "Slate Blue",
-        description: "Dusty blue gray - serene and sophisticated",
-        price: 100.0,
-        cost: 50.0,
-        sku: "FAB-SLATE",
-        color: "Blue",
-        hexColor: "#6A7B8B",
-        orderIndex: 10,
-        inStock: true,
-        attributeValues: {
-          colorName: "Slate Blue",
-          hex: "#6A7B8B",
-          colorFamily: "Blue",
-        },
+        attributeValues: { color_name: "Burgundy Red", hex: "#800020" },
       },
     ],
   });
 
-  // Material Category
-  const sofaMaterial = await prisma.category.create({
+  console.log("✅ Created Color category with 6 options");
+
+  // Category 3: Material Type
+  const materialCategory = await prisma.category.create({
     data: {
-      configuratorId: sofa.id,
-      name: "Upholstery Material",
+      configuratorId: configurator.id,
+      name: "Material",
       categoryType: "MATERIAL",
-      description: "Choose from our selection of premium upholstery materials",
-      helpText:
-        "Each material has different care requirements and durability ratings.",
+      description: "Choose your fabric material",
       isPrimary: false,
       isRequired: true,
       orderIndex: 3,
@@ -768,135 +256,81 @@ async function main() {
   await prisma.option.createMany({
     data: [
       {
-        categoryId: sofaMaterial.id,
-        label: "Standard Polyester",
-        description:
-          "Durable and easy-care polyester blend. Great for everyday use.",
+        categoryId: materialCategory.id,
+        label: "Standard Fabric",
+        description: "Durable polyester blend",
         price: 0,
-        sku: "MAT-POLY",
+        cost: 0,
+        sku: "MAT-STD",
         materialType: "Polyester",
         orderIndex: 1,
         isDefault: true,
-        inStock: true,
-        attributeValues: {
-          material: "Polyester Blend",
-          durability: "Good",
-          cleanability: "Easy",
-          martindale: 50000,
-        },
+        attributeValues: { material: "Polyester Blend", durability: "Medium" },
       },
       {
-        categoryId: sofaMaterial.id,
+        categoryId: materialCategory.id,
         label: "Premium Linen",
-        description:
-          "Natural breathable linen with beautiful texture. Eco-friendly choice.",
-        price: 250.0,
-        cost: 125.0,
+        description: "Natural breathable linen",
+        price: 200,
+        cost: 100,
         sku: "MAT-LINEN",
         materialType: "Linen",
         orderIndex: 2,
         isPopular: true,
-        inStock: true,
-        attributeValues: {
-          material: "European Linen",
-          durability: "Very Good",
-          cleanability: "Moderate",
-          martindale: 40000,
-          sustainable: true,
-        },
+        attributeValues: { material: "Premium Linen", durability: "High" },
       },
       {
-        categoryId: sofaMaterial.id,
-        label: "Soft Velvet",
-        description:
-          "Luxurious soft-touch velvet with rich depth. Elegant and comfortable.",
-        price: 350.0,
-        cost: 175.0,
+        categoryId: materialCategory.id,
+        label: "Velvet",
+        description: "Luxurious soft velvet",
+        price: 300,
+        cost: 150,
         sku: "MAT-VELVET",
         materialType: "Velvet",
         orderIndex: 3,
-        isPopular: true,
-        inStock: true,
-        attributeValues: {
-          material: "Cotton Velvet",
-          durability: "Good",
-          cleanability: "Professional",
-          martindale: 35000,
-          luxuryFeel: true,
-        },
+        attributeValues: { material: "Soft Velvet", durability: "Medium" },
       },
       {
-        categoryId: sofaMaterial.id,
-        label: "Genuine Leather",
-        description:
-          "Top-grain genuine leather. Ages beautifully and extremely durable.",
-        price: 800.0,
-        cost: 400.0,
+        categoryId: materialCategory.id,
+        label: "Leather",
+        description: "Genuine leather upholstery",
+        price: 500,
+        cost: 250,
         sku: "MAT-LEATHER",
         materialType: "Leather",
         orderIndex: 4,
-        inStock: true,
-        stockQuantity: 15,
         attributeValues: {
-          material: "Top-Grain Leather",
-          durability: "Excellent",
-          cleanability: "Easy",
-          warranty: "10 years",
-          natural: true,
+          material: "Genuine Leather",
+          durability: "Very High",
         },
       },
       {
-        categoryId: sofaMaterial.id,
+        categoryId: materialCategory.id,
         label: "Performance Fabric",
-        description:
-          "Stain-resistant, water-repellent performance fabric. Ideal for families and pets.",
-        price: 300.0,
-        cost: 150.0,
+        description: "Stain-resistant and easy to clean",
+        price: 250,
+        cost: 125,
         sku: "MAT-PERF",
         materialType: "Performance",
         orderIndex: 5,
-        inStock: true,
         attributeValues: {
-          material: "Crypton Performance",
-          durability: "Excellent",
-          cleanability: "Very Easy",
-          martindale: 75000,
-          stainResistant: true,
-          waterRepellent: true,
-          petFriendly: true,
-        },
-      },
-      {
-        categoryId: sofaMaterial.id,
-        label: "Bouclé Fabric",
-        description:
-          "Trendy textured bouclé with a sophisticated loop texture.",
-        price: 400.0,
-        cost: 200.0,
-        sku: "MAT-BOUCLE",
-        materialType: "Boucle",
-        orderIndex: 6,
-        inStock: true,
-        stockQuantity: 10,
-        lowStockThreshold: 12,
-        attributeValues: {
-          material: "Wool Bouclé",
-          durability: "Very Good",
-          cleanability: "Moderate",
-          martindale: 45000,
-          trendy: true,
+          material: "Performance Fabric",
+          durability: "Very High",
+          stain_resistant: true,
         },
       },
     ],
   });
 
-  // Legs Category
-  const sofaLegs = await prisma.category.create({
+  console.log("✅ Created Material category with 5 options");
+
+  // Category 4: Leg Style
+  const legCategory = await prisma.category.create({
     data: {
-      configuratorId: sofa.id,
+      configuratorId: configurator.id,
       name: "Leg Style",
       categoryType: "FEATURE",
-      description: "Select the perfect leg style to match your aesthetic",
+      description: "Select your preferred leg style",
       isPrimary: false,
       isRequired: true,
       orderIndex: 4,
@@ -907,253 +341,150 @@ async function main() {
   await prisma.option.createMany({
     data: [
       {
-        categoryId: sofaLegs.id,
-        label: "Tapered Wood Legs",
-        description: "Classic mid-century modern tapered legs in natural wood",
+        categoryId: legCategory.id,
+        label: "Wooden Tapered",
+        description: "Classic tapered wooden legs",
         price: 0,
-        sku: "LEG-WOOD-TAPER",
+        cost: 0,
+        sku: "LEG-WOOD",
         orderIndex: 1,
         isDefault: true,
-        isPopular: true,
-        inStock: true,
-        attributeValues: {
-          style: "Tapered",
-          material: "Oak Wood",
-          height_cm: 15,
-          finish: "Natural",
-        },
+        attributeValues: { style: "Tapered", material: "Wood", height_cm: 15 },
       },
       {
-        categoryId: sofaLegs.id,
-        label: "Chrome Metal Legs",
-        description: "Sleek modern chrome-plated metal legs",
-        price: 125.0,
-        cost: 60.0,
+        categoryId: legCategory.id,
+        label: "Metal Chrome",
+        description: "Modern chrome metal legs",
+        price: 100,
+        cost: 50,
         sku: "LEG-CHROME",
         orderIndex: 2,
-        inStock: true,
         attributeValues: {
           style: "Straight",
-          material: "Chrome Steel",
+          material: "Chrome",
           height_cm: 15,
-          finish: "Polished",
         },
       },
       {
-        categoryId: sofaLegs.id,
-        label: "Matte Black Metal",
-        description: "Industrial matte black powder-coated steel legs",
-        price: 125.0,
-        cost: 60.0,
+        categoryId: legCategory.id,
+        label: "Black Metal",
+        description: "Industrial black metal legs",
+        price: 100,
+        cost: 50,
         sku: "LEG-BLACK",
         orderIndex: 3,
-        isPopular: true,
-        inStock: true,
         attributeValues: {
           style: "Straight",
-          material: "Steel",
+          material: "Black Metal",
           height_cm: 15,
-          finish: "Matte Black",
         },
       },
       {
-        categoryId: sofaLegs.id,
-        label: "Brass Finished Legs",
-        description: "Elegant brass-finished metal legs for a luxe look",
-        price: 175.0,
-        cost: 85.0,
-        sku: "LEG-BRASS",
-        orderIndex: 4,
-        inStock: true,
-        stockQuantity: 18,
-        attributeValues: {
-          style: "Round",
-          material: "Brass Plated",
-          height_cm: 18,
-          finish: "Brushed Brass",
-        },
-      },
-      {
-        categoryId: sofaLegs.id,
-        label: "Low Profile (No Legs)",
-        description:
-          "Floor-sitting design with hidden casters for easy movement",
-        price: -50.0,
-        cost: -25.0,
+        categoryId: legCategory.id,
+        label: "No Legs (Floor)",
+        description: "Low profile, sits on floor",
+        price: -50,
+        cost: -25,
         sku: "LEG-NONE",
-        orderIndex: 5,
-        inStock: true,
-        attributeValues: {
-          style: "Floor",
-          material: "N/A",
-          height_cm: 0,
-          casters: true,
-        },
+        orderIndex: 4,
+        attributeValues: { style: "Floor", material: "None", height_cm: 0 },
       },
     ],
   });
 
-  // Accessories Category
-  const sofaAccessories = await prisma.category.create({
+  console.log("✅ Created Leg Style category with 4 options");
+
+  // Category 5: Accessories
+  const accessoryCategory = await prisma.category.create({
     data: {
-      configuratorId: sofa.id,
-      name: "Add-Ons & Accessories",
+      configuratorId: configurator.id,
+      name: "Add-ons",
       categoryType: "ACCESSORY",
-      description: "Enhance your sofa with optional accessories",
+      description: "Optional add-ons and accessories",
       isPrimary: false,
       isRequired: false,
       orderIndex: 5,
       icon: "✨",
       minSelections: 0,
-      maxSelections: 10,
+      maxSelections: 5,
     },
   });
 
   await prisma.option.createMany({
     data: [
       {
-        categoryId: sofaAccessories.id,
+        categoryId: accessoryCategory.id,
         label: "Throw Pillows (Set of 2)",
-        description: "Matching decorative throw pillows with premium down fill",
-        price: 99.0,
-        cost: 35.0,
-        sku: "ACC-PILLOW-2",
+        description: "Matching decorative pillows",
+        price: 89.99,
+        cost: 30,
+        sku: "ACC-PILLOWS",
         orderIndex: 1,
-        inStock: true,
-        stockQuantity: 150,
-        attributeValues: {
-          quantity: 2,
-          size: "20x20",
-          fill: "Down",
-          washable: true,
-        },
+        stockQuantity: 50,
+        attributeValues: { quantity: 2, type: "decorative" },
       },
       {
-        categoryId: sofaAccessories.id,
-        label: "Throw Pillows (Set of 4)",
-        description:
-          "Four matching decorative throw pillows with premium down fill",
-        price: 179.0,
-        cost: 65.0,
-        sku: "ACC-PILLOW-4",
-        orderIndex: 2,
-        inStock: true,
-        stockQuantity: 120,
-        attributeValues: {
-          quantity: 4,
-          size: "20x20",
-          fill: "Down",
-          washable: true,
-        },
-      },
-      {
-        categoryId: sofaAccessories.id,
-        label: "Matching Ottoman",
-        description: "Coordinating storage ottoman with lift-top design",
-        price: 399.0,
-        cost: 180.0,
+        categoryId: accessoryCategory.id,
+        label: "Ottoman",
+        description: "Matching storage ottoman",
+        price: 299.99,
+        cost: 120,
         sku: "ACC-OTTOMAN",
-        orderIndex: 3,
-        isPopular: true,
-        inStock: true,
-        stockQuantity: 35,
+        orderIndex: 2,
+        stockQuantity: 20,
         attributeValues: {
-          hasStorage: true,
-          dimensions: { width: 80, depth: 80, height: 45 },
-          weight: 18.5,
+          has_storage: true,
+          dimensions: { width: 60, depth: 60, height: 45 },
         },
       },
       {
-        categoryId: sofaAccessories.id,
+        categoryId: accessoryCategory.id,
         label: "Armrest Tray Table",
-        description:
-          "Bamboo armrest tray for drinks and remotes - clips on securely",
-        price: 59.0,
-        cost: 22.0,
+        description: "Convenient side tray for drinks",
+        price: 49.99,
+        cost: 20,
         sku: "ACC-TRAY",
+        orderIndex: 3,
+        stockQuantity: 100,
+        attributeValues: { material: "Wood", type: "clip-on" },
+      },
+      {
+        categoryId: accessoryCategory.id,
+        label: "Furniture Protection Plan (5 Years)",
+        description: "Extended warranty and stain protection",
+        price: 199.99,
+        cost: 50,
+        sku: "ACC-WARRANTY",
         orderIndex: 4,
         inStock: true,
-        stockQuantity: 200,
         attributeValues: {
-          material: "Bamboo",
-          cupHolder: true,
-          removable: true,
+          duration_years: 5,
+          covers: ["stains", "rips", "structural"],
         },
       },
       {
-        categoryId: sofaAccessories.id,
-        label: "USB Charging Console",
-        description: "Built-in dual USB charging ports (2x USB-A, 1x USB-C)",
-        price: 129.0,
-        cost: 50.0,
+        categoryId: accessoryCategory.id,
+        label: "USB Charging Ports",
+        description: "Built-in USB charging (2 ports)",
+        price: 79.99,
+        cost: 30,
         sku: "ACC-USB",
         orderIndex: 5,
-        inStock: true,
-        stockQuantity: 80,
-        attributeValues: {
-          ports: "2x USB-A + 1x USB-C",
-          powerOutput: "3.1A",
-          ledIndicator: true,
-        },
-      },
-      {
-        categoryId: sofaAccessories.id,
-        label: "5-Year Protection Plan",
-        description:
-          "Comprehensive warranty covering stains, tears, and structural damage",
-        price: 249.0,
-        cost: 75.0,
-        sku: "ACC-WARRANTY-5Y",
-        orderIndex: 6,
-        isPopular: true,
-        inStock: true,
-        attributeValues: {
-          duration: "5 years",
-          covers: ["stains", "rips", "structural", "mechanicalParts"],
-          transfers: true,
-        },
-      },
-      {
-        categoryId: sofaAccessories.id,
-        label: "Luxury Throw Blanket",
-        description: "Cashmere blend throw blanket (50x60 inches)",
-        price: 149.0,
-        cost: 55.0,
-        sku: "ACC-BLANKET",
-        orderIndex: 7,
-        inStock: true,
-        stockQuantity: 95,
-        attributeValues: {
-          material: "Cashmere Blend",
-          size: "50x60",
-          washable: "Dry Clean Only",
-        },
-      },
-      {
-        categoryId: sofaAccessories.id,
-        label: "Professional White Glove Delivery",
-        description:
-          "Premium delivery with room placement, assembly, and packaging removal",
-        price: 199.0,
-        cost: 100.0,
-        sku: "ACC-DELIVERY",
-        orderIndex: 8,
-        inStock: true,
-        attributeValues: {
-          service: "White Glove",
-          includes: ["unboxing", "assembly", "placement", "disposal"],
-        },
+        stockQuantity: 30,
+        attributeValues: { port_count: 2, type: "USB-A" },
       },
     ],
   });
 
-  // Wood Finish Category
-  const sofaFinish = await prisma.category.create({
+  console.log("✅ Created Accessories category with 5 options");
+
+  // Category 6: Finish
+  const finishCategory = await prisma.category.create({
     data: {
-      configuratorId: sofa.id,
+      configuratorId: configurator.id,
       name: "Wood Finish",
       categoryType: "FINISH",
-      description: "Select finish for wooden legs and accents",
+      description: "Select the finish for wooden components",
       isPrimary: false,
       isRequired: true,
       orderIndex: 6,
@@ -1164,552 +495,753 @@ async function main() {
   await prisma.option.createMany({
     data: [
       {
-        categoryId: sofaFinish.id,
+        categoryId: finishCategory.id,
         label: "Natural Oak",
-        description: "Light natural oak with matte protective finish",
+        description: "Light natural oak finish",
         price: 0,
-        sku: "FIN-OAK-NAT",
+        cost: 0,
+        sku: "FIN-OAK",
         finishType: "Natural",
         orderIndex: 1,
         isDefault: true,
-        inStock: true,
-        attributeValues: {
-          wood: "Oak",
-          tone: "Light",
-          sheen: "Matte",
-          durability: "High",
-        },
+        attributeValues: { wood: "Oak", tone: "Light", finish: "Matte" },
       },
       {
-        categoryId: sofaFinish.id,
-        label: "Walnut Stain",
-        description: "Rich dark walnut with satin finish",
-        price: 85.0,
-        cost: 40.0,
+        categoryId: finishCategory.id,
+        label: "Walnut",
+        description: "Rich dark walnut finish",
+        price: 75,
+        cost: 35,
         sku: "FIN-WALNUT",
         finishType: "Stained",
         orderIndex: 2,
         isPopular: true,
-        inStock: true,
-        attributeValues: {
-          wood: "Oak",
-          tone: "Dark",
-          sheen: "Satin",
-          durability: "High",
-        },
+        attributeValues: { wood: "Walnut", tone: "Dark", finish: "Satin" },
       },
       {
-        categoryId: sofaFinish.id,
+        categoryId: finishCategory.id,
         label: "Espresso",
-        description: "Deep espresso brown with satin finish",
-        price: 75.0,
-        cost: 35.0,
-        sku: "FIN-ESPRESSO",
+        description: "Deep espresso brown",
+        price: 50,
+        cost: 25,
+        sku: "FIN-ESP",
         finishType: "Stained",
         orderIndex: 3,
-        inStock: true,
-        attributeValues: {
-          wood: "Oak",
-          tone: "Very Dark",
-          sheen: "Satin",
-          durability: "High",
-        },
+        attributeValues: { wood: "Oak", tone: "Dark", finish: "Satin" },
       },
       {
-        categoryId: sofaFinish.id,
+        categoryId: finishCategory.id,
         label: "White Wash",
-        description: "Contemporary whitewashed oak with matte finish",
-        price: 75.0,
-        cost: 35.0,
-        sku: "FIN-WHITEWASH",
+        description: "Contemporary white wash",
+        price: 50,
+        cost: 25,
+        sku: "FIN-WHITE",
         finishType: "Painted",
         orderIndex: 4,
-        inStock: true,
+        attributeValues: { wood: "Oak", tone: "White", finish: "Matte" },
+      },
+    ],
+  });
+
+  console.log("✅ Created Finish category with 4 options");
+
+  // Create a sample quote
+  const quote = await prisma.quote.create({
+    data: {
+      clientId: client.id,
+      configuratorId: configurator.id,
+      customerEmail: "customer@example.com",
+      customerName: "John Doe",
+      customerPhone: "+1-555-0123",
+      title: "Custom Sofa Configuration",
+      selectedOptions: {
+        size: "Medium (3-Seater)",
+        color: "Navy Blue",
+        material: "Premium Linen",
+        legs: "Wooden Tapered",
+        addons: ["Throw Pillows (Set of 2)", "Ottoman"],
+        finish: "Walnut",
+      },
+      totalPrice: 1829.97,
+      subtotal: 1829.97,
+      status: "PENDING",
+      customerNotes:
+        "Please deliver before Christmas. Would like to see fabric samples first.",
+    },
+  });
+
+  console.log("✅ Created sample quote:", quote.quoteCode);
+
+  // ========================================
+  // WATER JET CUTTING CONFIGURATOR
+  // ========================================
+
+  const waterjetConfigurator = await prisma.configurator.create({
+    data: {
+      clientId: client.id,
+      themeId: theme.id,
+      name: "Industrial Water Jet Cutting Service",
+      description:
+        "Configure your custom water jet cutting project with precision material selection",
+      slug: "waterjet-cutting",
+      isActive: true,
+      isPublished: true,
+      publishedAt: new Date(),
+      currency: "USD",
+      currencySymbol: "$",
+      allowQuotes: true,
+      requireEmail: true,
+      autoPricing: true,
+      showTotal: true,
+      metaTitle: "Water Jet Cutting Service | Precision Industrial Cutting",
+      metaDescription:
+        "Get custom water jet cutting services for metal, stone, glass, and composite materials with precision tolerance",
+    },
+  });
+
+  console.log("✅ Created Water Jet configurator");
+
+  // Category 1: Material Type
+  const wjMaterialCategory = await prisma.category.create({
+    data: {
+      configuratorId: waterjetConfigurator.id,
+      name: "Material Type",
+      categoryType: "MATERIAL",
+      description: "Select the material to be cut",
+      isPrimary: true,
+      isRequired: true,
+      orderIndex: 1,
+      icon: "🔩",
+    },
+  });
+
+  const wjMaterials = await prisma.option.createMany({
+    data: [
+      {
+        categoryId: wjMaterialCategory.id,
+        label: "Stainless Steel 304",
+        description: "Corrosion-resistant stainless steel",
+        price: 150.0,
+        cost: 75.0,
+        sku: "WJ-SS304",
+        materialType: "Metal",
+        orderIndex: 1,
+        isDefault: true,
         attributeValues: {
-          wood: "Oak",
-          tone: "White",
-          sheen: "Matte",
-          durability: "Good",
+          density: "7.9 g/cm³",
+          hardness: "Medium",
+          maxThickness: "50mm",
         },
       },
       {
-        categoryId: sofaFinish.id,
-        label: "Honey Maple",
-        description: "Warm honey-toned maple with satin finish",
-        price: 75.0,
-        cost: 35.0,
-        sku: "FIN-MAPLE",
-        finishType: "Stained",
+        categoryId: wjMaterialCategory.id,
+        label: "Aluminum 6061",
+        description: "Lightweight aerospace-grade aluminum",
+        price: 120.0,
+        cost: 60.0,
+        sku: "WJ-AL6061",
+        materialType: "Metal",
+        orderIndex: 2,
+        isPopular: true,
+        attributeValues: {
+          density: "2.7 g/cm³",
+          hardness: "Medium",
+          maxThickness: "75mm",
+        },
+      },
+      {
+        categoryId: wjMaterialCategory.id,
+        label: "Mild Steel",
+        description: "Carbon steel for structural applications",
+        price: 100.0,
+        cost: 50.0,
+        sku: "WJ-MS",
+        materialType: "Metal",
+        orderIndex: 3,
+        attributeValues: {
+          density: "7.85 g/cm³",
+          hardness: "Medium",
+          maxThickness: "50mm",
+        },
+      },
+      {
+        categoryId: wjMaterialCategory.id,
+        label: "Titanium Grade 5",
+        description: "High-strength titanium alloy",
+        price: 450.0,
+        cost: 225.0,
+        sku: "WJ-TI5",
+        materialType: "Metal",
+        orderIndex: 4,
+        attributeValues: {
+          density: "4.43 g/cm³",
+          hardness: "High",
+          maxThickness: "25mm",
+        },
+      },
+      {
+        categoryId: wjMaterialCategory.id,
+        label: "Granite",
+        description: "Natural stone for countertops and tiles",
+        price: 200.0,
+        cost: 100.0,
+        sku: "WJ-GRANITE",
+        materialType: "Stone",
         orderIndex: 5,
-        inStock: true,
         attributeValues: {
-          wood: "Maple",
-          tone: "Medium",
-          sheen: "Satin",
-          durability: "High",
+          density: "2.7 g/cm³",
+          hardness: "Very High",
+          maxThickness: "50mm",
+        },
+      },
+      {
+        categoryId: wjMaterialCategory.id,
+        label: "Tempered Glass",
+        description: "Safety glass for architectural applications",
+        price: 180.0,
+        cost: 90.0,
+        sku: "WJ-GLASS",
+        materialType: "Glass",
+        orderIndex: 6,
+        attributeValues: {
+          density: "2.5 g/cm³",
+          hardness: "High",
+          maxThickness: "19mm",
+        },
+      },
+      {
+        categoryId: wjMaterialCategory.id,
+        label: "Carbon Fiber Composite",
+        description: "Lightweight high-performance composite",
+        price: 350.0,
+        cost: 175.0,
+        sku: "WJ-CARBON",
+        materialType: "Composite",
+        orderIndex: 7,
+        attributeValues: {
+          density: "1.6 g/cm³",
+          hardness: "High",
+          maxThickness: "12mm",
+        },
+      },
+      {
+        categoryId: wjMaterialCategory.id,
+        label: "Copper",
+        description: "Conductive copper for electrical applications",
+        price: 220.0,
+        cost: 110.0,
+        sku: "WJ-COPPER",
+        materialType: "Metal",
+        orderIndex: 8,
+        attributeValues: {
+          density: "8.96 g/cm³",
+          hardness: "Soft",
+          maxThickness: "25mm",
         },
       },
     ],
   });
 
-  console.log("✅ Created Sofa configurator with 6 categories and 54 options");
+  console.log("✅ Created Material Type category with 8 options");
 
-  // ========================================
-  // CREATE EMAIL TEMPLATES
-  // ========================================
+  // Get material option IDs for incompatibility setup
+  const materials = await prisma.option.findMany({
+    where: { categoryId: wjMaterialCategory.id },
+  });
+  const ss304 = materials.find((m) => m.sku === "WJ-SS304")!;
+  const aluminum = materials.find((m) => m.sku === "WJ-AL6061")!;
+  const mildSteel = materials.find((m) => m.sku === "WJ-MS")!;
+  const titanium = materials.find((m) => m.sku === "WJ-TI5")!;
+  const granite = materials.find((m) => m.sku === "WJ-GRANITE")!;
+  const glass = materials.find((m) => m.sku === "WJ-GLASS")!;
+  const carbon = materials.find((m) => m.sku === "WJ-CARBON")!;
+  const copper = materials.find((m) => m.sku === "WJ-COPPER")!;
 
-  await prisma.emailTemplate.createMany({
+  // Category 2: Material Thickness
+  const wjThicknessCategory = await prisma.category.create({
+    data: {
+      configuratorId: waterjetConfigurator.id,
+      name: "Material Thickness",
+      categoryType: "DIMENSION",
+      description: "Specify the thickness of your material",
+      isPrimary: false,
+      isRequired: true,
+      orderIndex: 2,
+      icon: "📏",
+    },
+  });
+
+  const wjThickness = await prisma.option.createMany({
     data: [
       {
-        clientId: client1.id,
-        name: "Quote Confirmation",
-        subject: "Your Custom Furniture Quote - {{quoteCode}}",
-        body: `
-          <h1>Thank you for your interest!</h1>
-          <p>Hi {{customerName}},</p>
-          <p>Thank you for configuring your custom furniture with us. Here are the details:</p>
-          <h2>Configuration Summary</h2>
-          {{configurationDetails}}
-          <h2>Total Price: {{totalPrice}}</h2>
-          <p>This quote is valid for 30 days. To proceed with your order, please reply to this email or call us at +1-555-0101.</p>
-        `,
-        previewText: "Your custom furniture quote is ready",
-        templateType: "quote",
+        categoryId: wjThicknessCategory.id,
+        label: '1/8" (3mm)',
+        description: "Thin sheet - fastest cutting",
+        price: 50.0,
+        cost: 25.0,
+        sku: "WJ-T3MM",
+        orderIndex: 1,
         isDefault: true,
-        isActive: true,
-        inheritThemeColors: true,
+        attributeValues: { thickness: "3mm", cuttingTime: "Fast" },
       },
       {
-        clientId: client1.id,
-        name: "Order Confirmation",
-        subject: "Order Confirmed - {{orderNumber}}",
-        body: `
-          <h1>Order Confirmed!</h1>
-          <p>Hi {{customerName}},</p>
-          <p>Great news! Your order has been confirmed and is being prepared.</p>
-          <h2>Order Details</h2>
-          {{orderDetails}}
-          <p>Estimated delivery: {{deliveryDate}}</p>
-        `,
-        templateType: "order",
-        isDefault: false,
-        isActive: true,
-        inheritThemeColors: true,
+        categoryId: wjThicknessCategory.id,
+        label: '1/4" (6mm)',
+        description: "Standard thickness",
+        price: 75.0,
+        cost: 37.5,
+        sku: "WJ-T6MM",
+        orderIndex: 2,
+        isPopular: true,
+        attributeValues: { thickness: "6mm", cuttingTime: "Medium" },
       },
       {
-        clientId: client2.id,
-        name: "Manufacturing Quote",
-        subject: "Industrial Service Quote - {{quoteCode}}",
-        body: `
-          <h1>Your Custom Manufacturing Quote</h1>
-          <p>Hello {{customerName}},</p>
-          <p>Thank you for your inquiry. Please find your detailed quote below:</p>
-          {{configurationDetails}}
-          <p><strong>Total: {{totalPrice}}</strong></p>
-          <p>Lead time: {{leadTime}} business days</p>
-          <p>Quote valid for 14 days.</p>
-        `,
-        templateType: "quote",
+        categoryId: wjThicknessCategory.id,
+        label: '1/2" (12mm)',
+        description: "Medium thickness",
+        price: 120.0,
+        cost: 60.0,
+        sku: "WJ-T12MM",
+        orderIndex: 3,
+        attributeValues: { thickness: "12mm", cuttingTime: "Medium" },
+      },
+      {
+        categoryId: wjThicknessCategory.id,
+        label: '3/4" (19mm)',
+        description: "Thick material",
+        price: 180.0,
+        cost: 90.0,
+        sku: "WJ-T19MM",
+        orderIndex: 4,
+        attributeValues: { thickness: "19mm", cuttingTime: "Slow" },
+      },
+      {
+        categoryId: wjThicknessCategory.id,
+        label: '1" (25mm)',
+        description: "Very thick material",
+        price: 250.0,
+        cost: 125.0,
+        sku: "WJ-T25MM",
+        orderIndex: 5,
+        attributeValues: { thickness: "25mm", cuttingTime: "Very Slow" },
+      },
+      {
+        categoryId: wjThicknessCategory.id,
+        label: '2" (50mm)',
+        description: "Extra thick - maximum capacity for most materials",
+        price: 400.0,
+        cost: 200.0,
+        sku: "WJ-T50MM",
+        orderIndex: 6,
+        attributeValues: { thickness: "50mm", cuttingTime: "Very Slow" },
+      },
+    ],
+  });
+
+  console.log("✅ Created Thickness category with 6 options");
+
+  const thicknesses = await prisma.option.findMany({
+    where: { categoryId: wjThicknessCategory.id },
+  });
+  const t3mm = thicknesses.find((t) => t.sku === "WJ-T3MM")!;
+  const t6mm = thicknesses.find((t) => t.sku === "WJ-T6MM")!;
+  const t12mm = thicknesses.find((t) => t.sku === "WJ-T12MM")!;
+  const t19mm = thicknesses.find((t) => t.sku === "WJ-T19MM")!;
+  const t25mm = thicknesses.find((t) => t.sku === "WJ-T25MM")!;
+  const t50mm = thicknesses.find((t) => t.sku === "WJ-T50MM")!;
+
+  // Category 3: Cutting Precision
+  const wjPrecisionCategory = await prisma.category.create({
+    data: {
+      configuratorId: waterjetConfigurator.id,
+      name: "Cutting Precision",
+      categoryType: "FEATURE",
+      description: "Select the required tolerance level",
+      isPrimary: false,
+      isRequired: true,
+      orderIndex: 3,
+      icon: "🎯",
+    },
+  });
+
+  const wjPrecision = await prisma.option.createMany({
+    data: [
+      {
+        categoryId: wjPrecisionCategory.id,
+        label: "Standard (±0.1mm)",
+        description: "Good for general purposes",
+        price: 0,
+        cost: 0,
+        sku: "WJ-PREC-STD",
+        orderIndex: 1,
         isDefault: true,
-        isActive: true,
-        inheritThemeColors: true,
+        attributeValues: { tolerance: "±0.1mm", quality: "Standard" },
+      },
+      {
+        categoryId: wjPrecisionCategory.id,
+        label: "High (±0.05mm)",
+        description: "Precise cutting for detailed work",
+        price: 100.0,
+        cost: 50.0,
+        sku: "WJ-PREC-HIGH",
+        orderIndex: 2,
+        isPopular: true,
+        attributeValues: { tolerance: "±0.05mm", quality: "High" },
+      },
+      {
+        categoryId: wjPrecisionCategory.id,
+        label: "Ultra (±0.025mm)",
+        description: "Maximum precision for critical applications",
+        price: 250.0,
+        cost: 125.0,
+        sku: "WJ-PREC-ULTRA",
+        orderIndex: 3,
+        attributeValues: { tolerance: "±0.025mm", quality: "Ultra" },
       },
     ],
   });
 
-  console.log("✅ Created 3 email templates");
+  console.log("✅ Created Precision category with 3 options");
 
-  // ========================================
-  // CREATE SAMPLE QUOTES
-  // ========================================
+  const precisions = await prisma.option.findMany({
+    where: { categoryId: wjPrecisionCategory.id },
+  });
+  const precStd = precisions.find((p) => p.sku === "WJ-PREC-STD")!;
+  const precHigh = precisions.find((p) => p.sku === "WJ-PREC-HIGH")!;
+  const precUltra = precisions.find((p) => p.sku === "WJ-PREC-ULTRA")!;
 
-  await prisma.quote.createMany({
+  // Category 4: Edge Finishing
+  const wjFinishCategory = await prisma.category.create({
+    data: {
+      configuratorId: waterjetConfigurator.id,
+      name: "Edge Finishing",
+      categoryType: "FINISH",
+      description: "Post-cutting edge treatment",
+      isPrimary: false,
+      isRequired: true,
+      orderIndex: 4,
+      icon: "✨",
+    },
+  });
+
+  const wjFinish = await prisma.option.createMany({
     data: [
       {
-        clientId: client1.id,
-        configuratorId: sofa.id,
-        customerEmail: "john.customer@email.com",
-        customerName: "John Customer",
-        customerPhone: "+1-555-1001",
-        title: "Custom Navy Blue Velvet Sofa",
-        selectedOptions: {
-          size: "Standard (3-Seater)",
-          color: "Navy Blue",
-          material: "Soft Velvet",
-          legs: "Brass Finished Legs",
-          accessories: ["Throw Pillows (Set of 4)", "5-Year Protection Plan"],
-          finish: "Walnut Stain",
-        },
-        totalPrice: 2228.0,
-        subtotal: 2228.0,
-        status: "PENDING",
-        customerNotes:
-          "Would like to see fabric samples before ordering. Delivery needed by end of month.",
-        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        categoryId: wjFinishCategory.id,
+        label: "As-Cut",
+        description: "No additional finishing - raw cut edge",
+        price: 0,
+        cost: 0,
+        sku: "WJ-FIN-RAW",
+        finishType: "Raw",
+        orderIndex: 1,
+        isDefault: true,
+        attributeValues: { finish: "As-Cut", smoothness: "Medium" },
       },
       {
-        clientId: client1.id,
-        configuratorId: sofa.id,
-        customerEmail: "sarah.home@email.com",
-        customerName: "Sarah Martinez",
-        customerPhone: "+1-555-1002",
-        customerCompany: "Martinez Interiors",
-        title: "Loveseat in Performance Fabric",
-        selectedOptions: {
-          size: "Loveseat (2-Seater)",
-          color: "Cloud Gray",
-          material: "Performance Fabric",
-          legs: "Matte Black Metal",
-          accessories: ["Throw Pillows (Set of 2)", "Matching Ottoman"],
-          finish: "Natural Oak",
-        },
-        totalPrice: 1622.0,
-        subtotal: 1622.0,
-        status: "SENT",
-        emailSentAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-        openCount: 3,
-        lastOpenedAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
-        customerNotes:
-          "Interior designer - ordering for client. Need confirmation on lead times.",
-        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        categoryId: wjFinishCategory.id,
+        label: "Deburred",
+        description: "Remove sharp edges and burrs",
+        price: 50.0,
+        cost: 25.0,
+        sku: "WJ-FIN-DEBUR",
+        finishType: "Deburred",
+        orderIndex: 2,
+        attributeValues: { finish: "Deburred", smoothness: "Good" },
       },
       {
-        clientId: client1.id,
-        configuratorId: sofa.id,
-        customerEmail: "michael.buyer@email.com",
-        customerName: "Michael Thompson",
-        title: "Grand Leather Sofa Configuration",
-        selectedOptions: {
-          size: "Grand (4-Seater)",
-          color: "Charcoal Black",
-          material: "Genuine Leather",
-          legs: "Tapered Wood Legs",
-          accessories: [
-            "Professional White Glove Delivery",
-            "5-Year Protection Plan",
-          ],
-          finish: "Espresso",
-        },
-        totalPrice: 3322.0,
-        subtotal: 3322.0,
-        status: "ACCEPTED",
-        emailSentAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-        openCount: 5,
-        lastOpenedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
-        customerNotes: "Ready to order. Please send payment instructions.",
-        adminNotes: "High-value customer. Priority processing.",
-        createdAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+        categoryId: wjFinishCategory.id,
+        label: "Sanded Smooth",
+        description: "Machine sanded for smooth finish",
+        price: 120.0,
+        cost: 60.0,
+        sku: "WJ-FIN-SAND",
+        finishType: "Sanded",
+        orderIndex: 3,
+        isPopular: true,
+        attributeValues: { finish: "Sanded", smoothness: "Very Good" },
       },
       {
-        clientId: client2.id,
-        configuratorId: waterjet.id,
-        customerEmail: "engineer@techcorp.com",
-        customerName: "David Chen",
-        customerPhone: "+1-555-2001",
-        customerCompany: "Tech Corp Manufacturing",
-        title: "Aluminum Brackets - Water Jet Cutting",
-        selectedOptions: {
-          material: "Aluminum 6061",
-          thickness: "1/4 inch (6mm)",
-          precision: "High (±0.05mm)",
-          finish: "Deburred",
-          services: ["CAD File Conversion", "Quality Inspection Report"],
-        },
-        totalPrice: 395.0,
-        subtotal: 395.0,
-        status: "PENDING",
-        customerNotes:
-          "Need 50 pieces. Will upload DXF files after quote approval. Rush if possible.",
-        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-      },
-      {
-        clientId: client2.id,
-        configuratorId: waterjet.id,
-        customerEmail: "procurement@aerospace.com",
-        customerName: "Jennifer Lee",
-        customerPhone: "+1-555-2002",
-        customerCompany: "Aerospace Dynamics Ltd",
-        title: "Titanium Precision Parts",
-        selectedOptions: {
-          material: "Titanium Grade 5",
-          thickness: "1/2 inch (12mm)",
-          precision: "Ultra (±0.025mm)",
-          finish: "Polished",
-          services: ["Quality Inspection Report", "Custom Packaging"],
-        },
-        totalPrice: 1105.0,
-        subtotal: 1105.0,
-        status: "SENT",
-        emailSentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-        openCount: 2,
-        lastOpenedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-        customerNotes: "Aerospace grade required. AS9100 certification needed.",
-        adminNotes:
-          "Requires special certification. Quality manager to review.",
-        createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
-      },
-      {
-        clientId: client1.id,
-        configuratorId: desk.id,
-        customerEmail: "office.manager@corp.com",
-        customerName: "Patricia Wilson",
-        customerCompany: "Wilson & Associates",
-        title: "Executive Desk Configuration",
-        selectedOptions: {
-          size: "72 inch Wide",
-          material: "Walnut",
-          drawers: "File Cabinet (3 drawer)",
-          features: [
-            "Cable Management",
-            "USB Charging Ports",
-            "Leather Desk Pad",
-          ],
-          finish: "Satin",
-        },
-        totalPrice: 2499.0,
-        subtotal: 2499.0,
-        status: "EXPIRED",
-        emailSentAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
-        validUntil: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-        expiresAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-        openCount: 1,
-        customerNotes: "Need to check with CEO before ordering.",
-        createdAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
+        categoryId: wjFinishCategory.id,
+        label: "Polished",
+        description: "High-polish mirror finish (metals only)",
+        price: 200.0,
+        cost: 100.0,
+        sku: "WJ-FIN-POLISH",
+        finishType: "Polished",
+        orderIndex: 4,
+        attributeValues: { finish: "Polished", smoothness: "Excellent" },
       },
     ],
   });
 
-  console.log("✅ Created 6 sample quotes");
+  console.log("✅ Created Edge Finishing category with 4 options");
 
-  // ========================================
-  // CREATE ANALYTICS EVENTS
-  // ========================================
+  const finishes = await prisma.option.findMany({
+    where: { categoryId: wjFinishCategory.id },
+  });
+  const finRaw = finishes.find((f) => f.sku === "WJ-FIN-RAW")!;
+  const finDebur = finishes.find((f) => f.sku === "WJ-FIN-DEBUR")!;
+  const finSand = finishes.find((f) => f.sku === "WJ-FIN-SAND")!;
+  const finPolish = finishes.find((f) => f.sku === "WJ-FIN-POLISH")!;
 
-  const sessionIds = [
-    "sess_abc123",
-    "sess_def456",
-    "sess_ghi789",
-    "sess_jkl012",
-    "sess_mno345",
-  ];
+  // Category 5: Additional Services
+  const wjServicesCategory = await prisma.category.create({
+    data: {
+      configuratorId: waterjetConfigurator.id,
+      name: "Additional Services",
+      categoryType: "ACCESSORY",
+      description: "Optional add-on services",
+      isPrimary: false,
+      isRequired: false,
+      orderIndex: 5,
+      icon: "⚙️",
+      minSelections: 0,
+      maxSelections: 5,
+    },
+  });
 
-  const events = [];
-  const now = Date.now();
-
-  // Generate 100+ analytics events
-  for (let i = 0; i < 120; i++) {
-    const daysAgo = Math.floor(Math.random() * 30);
-    const randomClient = clients[Math.floor(Math.random() * 2)]; // Client 1 or 2
-    const randomConfig =
-      configurators[Math.floor(Math.random() * configurators.length)];
-    const randomSession =
-      sessionIds[Math.floor(Math.random() * sessionIds.length)];
-
-    events.push({
-      clientId: randomClient.id,
-      configuratorId: randomConfig.id,
-      eventType: [
-        "CONFIGURATOR_VIEW",
-        "CONFIGURATOR_INTERACTION",
-        "QUOTE_REQUEST",
-      ][Math.floor(Math.random() * 3)],
-      eventName: [
-        "page_view",
-        "option_selected",
-        "category_changed",
-        "quote_submitted",
-      ][Math.floor(Math.random() * 4)],
-      sessionId: randomSession,
-      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      ipAddress: `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-      country: ["US", "CA", "GB", "DE", "FR"][Math.floor(Math.random() * 5)],
-      region: ["California", "Ontario", "London", "Bavaria", "Île-de-France"][
-        Math.floor(Math.random() * 5)
-      ],
-      city: ["Los Angeles", "Toronto", "London", "Munich", "Paris"][
-        Math.floor(Math.random() * 5)
-      ],
-      path: `/configurator/${randomConfig.slug}`,
-      referrer: [
-        "https://google.com",
-        "https://facebook.com",
-        "direct",
-        "https://instagram.com",
-      ][Math.floor(Math.random() * 4)],
-      domain: randomClient.domain || "localhost",
-      metadata: {
-        device: "desktop",
-        browser: "Chrome",
-        viewportWidth: 1920,
-        viewportHeight: 1080,
-      },
-      createdAt: new Date(now - daysAgo * 24 * 60 * 60 * 1000),
-    });
-  }
-
-  await prisma.analyticsEvent.createMany({ data: events });
-
-  console.log("✅ Created 120 analytics events");
-
-  // ========================================
-  // CREATE FILES
-  // ========================================
-
-  await prisma.file.createMany({
+  const wjServices = await prisma.option.createMany({
     data: [
       {
-        clientId: client1.id,
-        filename: "sofa-hero-image.jpg",
-        originalName: "custom-sofa-main.jpg",
-        fileType: "IMAGE",
-        mimeType: "image/jpeg",
-        size: 2458000,
-        key: "uploads/client1/sofa-hero.jpg",
-        url: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc",
-        altText: "Luxury custom sofa in modern living room",
-        caption: "Hero image for sofa configurator",
-        isPublic: true,
-        metadata: { width: 1920, height: 1080, format: "JPEG" },
+        categoryId: wjServicesCategory.id,
+        label: "CAD File Conversion",
+        description: "Convert your design files to cutting-ready format",
+        price: 50.0,
+        cost: 25.0,
+        sku: "WJ-SRV-CAD",
+        orderIndex: 1,
+        attributeValues: { service: "CAD Conversion" },
       },
       {
-        clientId: client1.id,
-        filename: "fabric-swatch-guide.pdf",
-        originalName: "Fabric Swatches 2024.pdf",
-        fileType: "DOCUMENT",
-        mimeType: "application/pdf",
-        size: 1250000,
-        key: "uploads/client1/fabric-guide.pdf",
-        url: "https://example.com/fabric-guide.pdf",
-        caption: "Complete fabric swatch guide",
-        isPublic: false,
-        metadata: { pages: 12 },
+        categoryId: wjServicesCategory.id,
+        label: "Rush Processing (24hr)",
+        description: "Priority processing and cutting",
+        price: 300.0,
+        cost: 150.0,
+        sku: "WJ-SRV-RUSH",
+        orderIndex: 2,
+        attributeValues: { service: "Rush", turnaround: "24 hours" },
       },
       {
-        clientId: client2.id,
-        filename: "waterjet-capabilities.pdf",
-        originalName: "Water Jet Cutting Capabilities.pdf",
-        fileType: "DOCUMENT",
-        mimeType: "application/pdf",
-        size: 3400000,
-        key: "uploads/client2/capabilities.pdf",
-        url: "https://example.com/waterjet-capabilities.pdf",
-        caption: "Technical capabilities document",
-        isPublic: true,
-        metadata: { pages: 24 },
+        categoryId: wjServicesCategory.id,
+        label: "Protective Coating",
+        description: "Apply anti-corrosion coating (metals)",
+        price: 100.0,
+        cost: 50.0,
+        sku: "WJ-SRV-COAT",
+        orderIndex: 3,
+        attributeValues: { service: "Coating" },
       },
       {
-        clientId: client1.id,
-        filename: "desk-assembly-instructions.pdf",
-        originalName: "Executive Desk Assembly.pdf",
-        fileType: "DOCUMENT",
-        mimeType: "application/pdf",
-        size: 890000,
-        key: "uploads/client1/desk-assembly.pdf",
-        url: "https://example.com/desk-assembly.pdf",
-        isPublic: false,
-        metadata: { pages: 8 },
+        categoryId: wjServicesCategory.id,
+        label: "Quality Inspection Report",
+        description: "Detailed dimensional inspection certificate",
+        price: 75.0,
+        cost: 37.5,
+        sku: "WJ-SRV-QC",
+        orderIndex: 4,
+        attributeValues: { service: "Quality Control" },
       },
       {
-        clientId: client2.id,
-        filename: "cnc-sample-parts.zip",
-        originalName: "Sample CNC Parts.zip",
-        fileType: "ASSET",
-        mimeType: "application/zip",
-        size: 15600000,
-        key: "uploads/client2/cnc-samples.zip",
-        url: "https://example.com/cnc-samples.zip",
-        isPublic: false,
-        metadata: { files: 24, totalSize: 15600000 },
+        categoryId: wjServicesCategory.id,
+        label: "Custom Packaging",
+        description: "Foam padding and protective crating",
+        price: 80.0,
+        cost: 40.0,
+        sku: "WJ-SRV-PKG",
+        orderIndex: 5,
+        attributeValues: { service: "Packaging" },
       },
     ],
   });
 
-  console.log("✅ Created 5 file uploads");
+  console.log("✅ Created Additional Services category with 5 options");
+
+  const services = await prisma.option.findMany({
+    where: { categoryId: wjServicesCategory.id },
+  });
+  const srvCoat = services.find((s) => s.sku === "WJ-SRV-COAT")!;
+  const srvRush = services.find((s) => s.sku === "WJ-SRV-RUSH")!;
 
   // ========================================
-  // CREATE API LOGS
+  // CREATE INCOMPATIBILITIES
   // ========================================
 
-  const apiLogs = [];
-  for (let i = 0; i < 50; i++) {
-    const daysAgo = Math.floor(Math.random() * 7);
-    const randomClient = clients[Math.floor(Math.random() * 3)];
-    const methods = ["GET", "POST", "PUT", "DELETE"];
-    const paths = [
-      "/api/configurator/list",
-      "/api/quote/create",
-      "/api/option/update",
-      "/api/theme/list",
-    ];
-    const statuses = [200, 200, 200, 201, 400, 404, 500];
+  // Glass can't be thicker than 19mm
+  await prisma.optionIncompatibility.createMany({
+    data: [
+      {
+        optionId: glass.id,
+        incompatibleOptionId: t25mm.id,
+        severity: "error",
+        message: "Tempered glass cannot exceed 19mm thickness",
+      },
+      {
+        optionId: glass.id,
+        incompatibleOptionId: t50mm.id,
+        severity: "error",
+        message: "Tempered glass cannot exceed 19mm thickness",
+      },
+    ],
+  });
 
-    apiLogs.push({
-      clientId: randomClient.id,
-      method: methods[Math.floor(Math.random() * methods.length)],
-      path: paths[Math.floor(Math.random() * paths.length)],
-      statusCode: statuses[Math.floor(Math.random() * statuses.length)],
-      userAgent: "Mozilla/5.0",
-      ipAddress: `10.0.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-      responseTime: Math.floor(Math.random() * 500) + 50,
-      requestSize: Math.floor(Math.random() * 10000),
-      responseSize: Math.floor(Math.random() * 50000),
-      apiKeyId: randomClient.apiKey,
-      createdAt: new Date(now - daysAgo * 24 * 60 * 60 * 1000),
-    });
-  }
+  // Carbon fiber can't be thicker than 12mm
+  await prisma.optionIncompatibility.createMany({
+    data: [
+      {
+        optionId: carbon.id,
+        incompatibleOptionId: t19mm.id,
+        severity: "error",
+        message: "Carbon fiber composite limited to 12mm maximum thickness",
+      },
+      {
+        optionId: carbon.id,
+        incompatibleOptionId: t25mm.id,
+        severity: "error",
+        message: "Carbon fiber composite limited to 12mm maximum thickness",
+      },
+      {
+        optionId: carbon.id,
+        incompatibleOptionId: t50mm.id,
+        severity: "error",
+        message: "Carbon fiber composite limited to 12mm maximum thickness",
+      },
+    ],
+  });
 
-  await prisma.apiLog.createMany({ data: apiLogs });
+  // Titanium and Copper can't be thicker than 25mm
+  await prisma.optionIncompatibility.createMany({
+    data: [
+      {
+        optionId: titanium.id,
+        incompatibleOptionId: t50mm.id,
+        severity: "error",
+        message: "Titanium cutting limited to 25mm maximum thickness",
+      },
+      {
+        optionId: copper.id,
+        incompatibleOptionId: t50mm.id,
+        severity: "error",
+        message: "Copper cutting limited to 25mm maximum thickness",
+      },
+    ],
+  });
 
-  console.log("✅ Created 50 API logs");
+  // Polished finish only works with metals
+  await prisma.optionIncompatibility.createMany({
+    data: [
+      {
+        optionId: finPolish.id,
+        incompatibleOptionId: granite.id,
+        severity: "error",
+        message: "Polished finish only available for metal materials",
+      },
+      {
+        optionId: finPolish.id,
+        incompatibleOptionId: glass.id,
+        severity: "error",
+        message: "Polished finish only available for metal materials",
+      },
+      {
+        optionId: finPolish.id,
+        incompatibleOptionId: carbon.id,
+        severity: "error",
+        message: "Polished finish only available for metal materials",
+      },
+    ],
+  });
+
+  // Protective coating only for metals
+  await prisma.optionIncompatibility.createMany({
+    data: [
+      {
+        optionId: srvCoat.id,
+        incompatibleOptionId: granite.id,
+        severity: "warning",
+        message: "Protective coating designed for metal materials",
+      },
+      {
+        optionId: srvCoat.id,
+        incompatibleOptionId: glass.id,
+        severity: "warning",
+        message: "Protective coating designed for metal materials",
+      },
+    ],
+  });
+
+  // Ultra precision with thick materials takes too long
+  await prisma.optionIncompatibility.createMany({
+    data: [
+      {
+        optionId: precUltra.id,
+        incompatibleOptionId: t50mm.id,
+        severity: "warning",
+        message:
+          "Ultra precision with 50mm thickness results in very long cutting times",
+      },
+    ],
+  });
+
+  console.log("✅ Created 17 incompatibility rules");
 
   // ========================================
-  // FINAL SUMMARY
+  // CREATE DEPENDENCIES
   // ========================================
 
-  console.log("\n🎉 COMPREHENSIVE SEED COMPLETED! 🎉\n");
-  console.log("=".repeat(60));
-  console.log("📊 DATABASE SUMMARY:");
-  console.log("=".repeat(60));
-  console.log(`✅ Clients: 5 (with various subscription statuses)`);
+  // Rush processing requires Standard or High precision (not Ultra - too slow)
+  await prisma.optionDependency.create({
+    data: {
+      optionId: srvRush.id,
+      dependsOnOptionId: precStd.id,
+      dependencyType: "requires_one_of",
+    },
+  });
+
+  console.log("✅ Created dependencies");
+
+  // Create a sample quote for water jet
+  const wjQuote = await prisma.quote.create({
+    data: {
+      clientId: client.id,
+      configuratorId: waterjetConfigurator.id,
+      customerEmail: "engineer@manufacturing.com",
+      customerName: "Sarah Johnson",
+      customerPhone: "+1-555-0199",
+      customerCompany: "Precision Manufacturing Inc.",
+      title: "Custom Bracket Parts - Stainless Steel",
+      selectedOptions: {
+        material: "Stainless Steel 304",
+        thickness: '1/2" (12mm)',
+        precision: "High (±0.05mm)",
+        finish: "Sanded Smooth",
+        services: ["CAD File Conversion", "Quality Inspection Report"],
+      },
+      totalPrice: 545.0,
+      subtotal: 545.0,
+      status: "PENDING",
+      customerNotes:
+        "Need 20 pieces of custom mounting brackets. Will send DXF files upon confirmation.",
+    },
+  });
+
+  console.log("✅ Created water jet sample quote:", wjQuote.quoteCode);
+
+  console.log("🎉 Seed completed successfully!");
+  console.log("📊 Summary:");
+  console.log("- 1 Client (demo@example.com / password123)");
+  console.log("- 1 Theme (Modern Light Theme)");
+  console.log("- 2 Configurators (Custom Sofa + Water Jet Cutting)");
+  console.log("- Sofa: 6 Categories, 28 Options");
   console.log(
-    `   - john.furniture@example.com (ACTIVE - MONTHLY) - password123`
+    "- Water Jet: 5 Categories, 26 Options, 17 Incompatibilities, 1 Dependency"
   );
-  console.log(
-    `   - sarah.industrial@example.com (ACTIVE - YEARLY) - password456`
-  );
-  console.log(`   - mike.newbie@example.com (INACTIVE) - password789`);
-  console.log(`   - lisa.pastdue@example.com (PAST_DUE) - password321`);
-  console.log(`   - tom.canceled@example.com (CANCELED) - password654`);
-  console.log(`\n✅ Users: 3 (linked to Clients for Next-Auth)`);
-  console.log(`\n✅ Themes: 4`);
-  console.log(
-    `   - Modern Light, Dark Professional, Industrial Gray, Vibrant Creative`
-  );
-  console.log(`\n✅ Configurators: 6`);
-  console.log(`   1. Custom Sofa Designer (54 options across 6 categories)`);
-  console.log(`   2. Executive Desk Builder`);
-  console.log(`   3. Industrial Water Jet Cutting`);
-  console.log(`   4. CNC Machining Quote Calculator`);
-  console.log(`   5. Kitchen Cabinet Designer (draft)`);
-  console.log(`   6. Custom T-Shirt Designer`);
-  console.log(`\n✅ Categories: 6+ with detailed options`);
-  console.log(`✅ Options: 54+ with rich attribute data`);
-  console.log(`✅ Email Templates: 3`);
-  console.log(`✅ Quotes: 6 (various statuses)`);
-  console.log(`✅ Analytics Events: 120`);
-  console.log(`✅ Files: 5`);
-  console.log(`✅ API Logs: 50`);
-  console.log("=".repeat(60));
-  console.log("\n🚀 Ready to test! Login with any of the emails above.");
-  console.log(
-    "🎨 Explore configurators, create quotes, and test all features!"
-  );
-  console.log("\n");
+  console.log("- 2 Sample Quotes");
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Error during comprehensive seed:", e);
+    console.error("❌ Error during seed:", e);
     process.exit(1);
   })
   .finally(async () => {

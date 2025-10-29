@@ -1,19 +1,14 @@
 // Billing service
-import { prisma } from "@/src/lib/prisma";
-import {
-  stripe,
-  createCheckoutSession,
-  createCustomer,
-  createCustomerPortalSession,
-} from "@/src/lib/stripe";
-import { ClientService } from "./client.service";
-import type { SubscriptionStatus, SubscriptionDuration } from "@prisma/client";
-import { PLAN_LIMITS } from "@/src/config/permissions";
+import { prisma } from '@/src/lib/prisma';
+import { stripe, createCheckoutSession, createCustomer, createCustomerPortalSession } from '@/src/lib/stripe';
+import { ClientService } from './client.service';
+import type { SubscriptionStatus, SubscriptionDuration } from '@prisma/client';
+import { PLAN_LIMITS } from '@/src/config/permissions';
 
 export const BillingService = {
   async createCheckoutSession(
     clientId: string,
-    duration: "MONTHLY" | "YEARLY",
+    duration: 'MONTHLY' | 'YEARLY',
     successUrl: string,
     cancelUrl: string
   ) {
@@ -42,11 +37,11 @@ export const BillingService = {
 
     // If no price IDs in env, create them dynamically (for development)
     let priceId: string;
-
-    if (duration === "MONTHLY") {
-      priceId = monthlyPriceId || (await createOrGetPrice("month", 9900)); // €99.00
+    
+    if (duration === 'MONTHLY') {
+      priceId = monthlyPriceId || await createOrGetPrice('monthly', 9900); // €99.00
     } else {
-      priceId = yearlyPriceId || (await createOrGetPrice("year", 99900)); // €999.00
+      priceId = yearlyPriceId || await createOrGetPrice('yearly', 99900); // €999.00
     }
 
     const session = await createCheckoutSession({
@@ -63,66 +58,28 @@ export const BillingService = {
     const client = await ClientService.getById(clientId);
 
     if (!client.stripeCustomerId) {
-      throw new Error("No Stripe customer found");
+      throw new Error('No Stripe customer found');
     }
 
-    return await createCustomerPortalSession(
-      client.stripeCustomerId,
-      returnUrl
-    );
+    return await createCustomerPortalSession(client.stripeCustomerId, returnUrl);
   },
 
   async handleSubscriptionCreated(subscription: any) {
     const customerId = subscription.customer;
     const subscriptionId = subscription.id;
-    const stripeStatus = subscription.status; // 'active', 'trialing', 'past_due', etc.
+    const status = subscription.status as SubscriptionStatus;
     const currentPeriodEnd = new Date(subscription.current_period_end * 1000);
-
-    // Map Stripe status to our SubscriptionStatus enum
-    let status: SubscriptionStatus;
-    switch (stripeStatus) {
-      case "active":
-      case "trialing": // Map trialing to active since we don't support trials
-        status = "ACTIVE";
-        break;
-      case "past_due":
-        status = "PAST_DUE";
-        break;
-      case "canceled":
-      case "unpaid":
-        status = "CANCELED";
-        break;
-      case "incomplete":
-      case "incomplete_expired":
-      default:
-        status = "INACTIVE";
-        break;
-    }
 
     // Find client by Stripe customer ID
     const client = await prisma.client.findUnique({
       where: { stripeCustomerId: customerId },
     });
 
-    if (!client) {
-      console.error(`No client found for Stripe customer: ${customerId}`);
-      return;
-    }
+    if (!client) return;
 
     // Determine duration from price interval
     const interval = subscription.items.data[0]?.price.recurring?.interval;
-    const duration = interval === "year" ? "YEARLY" : "MONTHLY";
-
-    // Get the price ID
-    const priceId = subscription.items.data[0]?.price.id;
-
-    console.log(`Updating client ${client.id} subscription:`, {
-      status,
-      duration,
-      subscriptionId,
-      priceId,
-      stripeStatus,
-    });
+    const duration = interval === 'year' ? 'YEARLY' : 'MONTHLY';
 
     await prisma.client.update({
       where: { id: client.id },
@@ -130,14 +87,9 @@ export const BillingService = {
         subscriptionStatus: status,
         subscriptionDuration: duration,
         stripeSubscriptionId: subscriptionId,
-        stripePriceId: priceId,
         subscriptionEndsAt: currentPeriodEnd,
       },
     });
-
-    console.log(
-      `Successfully updated client ${client.id} subscription status to ${status}`
-    );
   },
 
   async handleSubscriptionUpdated(subscription: any) {
@@ -156,7 +108,7 @@ export const BillingService = {
     await prisma.client.update({
       where: { id: client.id },
       data: {
-        subscriptionStatus: "CANCELED",
+        subscriptionStatus: 'CANCELED',
         subscriptionDuration: null,
         stripeSubscriptionId: null,
         subscriptionEndsAt: new Date(),
@@ -166,10 +118,7 @@ export const BillingService = {
 };
 
 // Helper function to create or get Stripe price
-async function createOrGetPrice(
-  interval: "month" | "year",
-  amount: number
-): Promise<string> {
+async function createOrGetPrice(interval: 'month' | 'year', amount: number): Promise<string> {
   try {
     // Try to find existing product
     const products = await stripe.products.list({
@@ -181,8 +130,8 @@ async function createOrGetPrice(
     if (products.data.length === 0) {
       // Create product if it doesn't exist
       const product = await stripe.products.create({
-        name: "Configurator Subscription",
-        description: "Product configurator platform subscription",
+        name: 'Configurator Subscription',
+        description: 'Product configurator platform subscription',
       });
       productId = product.id;
     } else {
@@ -193,7 +142,7 @@ async function createOrGetPrice(
     const price = await stripe.prices.create({
       product: productId,
       unit_amount: amount,
-      currency: "eur",
+      currency: 'eur',
       recurring: {
         interval: interval,
       },
@@ -201,8 +150,8 @@ async function createOrGetPrice(
 
     return price.id;
   } catch (error) {
-    console.error("Failed to create price:", error);
+    console.error('Failed to create price:', error);
     // Fallback to dummy price IDs
-    return interval === "month" ? "price_monthly" : "price_yearly";
+    return interval === 'month' ? 'price_monthly' : 'price_yearly';
   }
 }
