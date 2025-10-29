@@ -77,8 +77,11 @@ export default function DashboardPage() {
             subscriptionDuration: data?.subscriptionDuration || null,
           });
 
-          // Show create modal if no configurators
-          if (configCount === 0) {
+          // Show create modal only if no configurators AND subscription is active
+          if (
+            configCount === 0 &&
+            (data?.subscriptionStatus || "INACTIVE") === "ACTIVE"
+          ) {
             setTimeout(() => setShowCreateModal(true), 500);
           }
         }
@@ -198,14 +201,27 @@ export default function DashboardPage() {
                 minutes.
               </p>
             </div>
-            <Button
-              onClick={() => setShowCreateModal(true)}
-              className="ml-4"
-              data-testid="banner-create-button"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Create Configurator
-            </Button>
+            {stats.subscriptionStatus === "ACTIVE" ? (
+              <Button
+                onClick={() => setShowCreateModal(true)}
+                className="ml-4"
+                data-testid="banner-create-button"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create Configurator
+              </Button>
+            ) : (
+              <Button
+                asChild
+                className="ml-4"
+                data-testid="banner-start-subscription"
+              >
+                <a href="/dashboard/billing">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Start Subscription
+                </a>
+              </Button>
+            )}
           </AlertDescription>
         </Alert>
       )}

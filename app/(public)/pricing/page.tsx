@@ -1,4 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
+import { useSession, signIn } from "next-auth/react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -53,10 +58,47 @@ export default function PricingPage() {
     },
   ];
 
+  const { data: session } = useSession();
+  const [loading, setLoading] = useState(false);
+
+  const handleSubscribe = async (duration: "monthly" | "yearly") => {
+    if (!session) {
+      // send user to sign in and preserve intent
+      signIn(undefined, { callbackUrl: `/dashboard/billing?plan=${duration}` });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await fetch("/api/billing/create-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          duration: duration === "monthly" ? "MONTHLY" : "YEARLY",
+          successUrl: `${window.location.origin}/dashboard/billing?success=true`,
+          cancelUrl: `${window.location.origin}/dashboard/billing?canceled=true`,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to create checkout session");
+      const json = await res.json();
+      const data = json.data || json;
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout url returned from server");
+      }
+    } catch (err: any) {
+      console.error("Create session failed", err);
+      toast.error(err?.message || "Failed to start checkout");
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <nav className="border-b border-border/40 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <Link
@@ -98,25 +140,25 @@ export default function PricingPage() {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16 max-w-6xl mx-auto">
+        <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch mb-16">
           {plans.map((plan) => (
             <Card
               key={plan.duration}
-              className={`relative glass ${plan.popular ? "border-primary shadow-xl scale-105" : ""}`}
+              className={`relative glass ${plan.popular ? "border-primary shadow-xl" : ""} flex flex-col h-full`}
               data-testid={`pricing-card-${plan.duration}`}
             >
               {plan.popular && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <Badge className="bg-primary text-primary-foreground px-4 py-1">
+                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                  <Badge className="bg-primary text-primary-foreground px-3 py-0.5 text-sm">
                     Most Popular
                   </Badge>
                 </div>
               )}
-              <CardHeader className="text-center pb-8 pt-8">
+              <CardHeader className="text-center pt-6 pb-4">
                 <CardTitle className="text-2xl mb-2">{plan.name}</CardTitle>
                 <div className="mb-2">
                   <span
-                    className="text-5xl font-bold"
+                    className="text-4xl md:text-5xl font-extrabold"
                     data-testid={`price-${plan.duration}`}
                   >
                     {plan.price}
@@ -127,32 +169,46 @@ export default function PricingPage() {
                     </span>
                   )}
                 </div>
-                <CardDescription className="text-base">
+                <CardDescription className="text-sm text-muted-foreground">
                   {plan.description}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-6 mt-auto">
                 <Separator />
                 <ul className="space-y-3">
                   {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-start gap-3">
-                      <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                      <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                       <span className="text-sm">{feature}</span>
                     </li>
                   ))}
                 </ul>
-                <Link href="/register">
-                  <Button
-                    className="w-full"
-                    size="lg"
-                    variant={plan.popular ? "default" : "outline"}
-                    data-testid={`select-plan-${plan.duration}`}
-                  >
-                    {plan.price === "Custom"
-                      ? "Contact Sales"
-                      : `Get Started with ${plan.name}`}
-                  </Button>
-                </Link>
+                <div>
+                  {plan.price === "Custom" ? (
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      variant="outline"
+                      asChild
+                    >
+                      <a href="mailto:sales@konfigra.com">Contact Sales</a>
+                    </Button>
+                  ) : (
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      variant={plan.popular ? "default" : "outline"}
+                      onClick={() =>
+                        handleSubscribe(plan.duration as "monthly" | "yearly")
+                      }
+                      data-testid={`select-plan-${plan.duration}`}
+                    >
+                      {loading
+                        ? "Processing..."
+                        : `Get Started with ${plan.name}`}
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
