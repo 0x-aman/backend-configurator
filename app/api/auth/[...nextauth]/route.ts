@@ -54,49 +54,9 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
-      if (account?.provider === "google") {
-        // Check if user already exists (adapter creates it automatically)
-        const existingUser = await prisma.user.findUnique({
-          where: { email: user.email! },
-          include: { client: true },
-        });
-
-        if (existingUser) {
-          // Link to existing client or create new client if needed
-          if (!existingUser.clientId) {
-            // Create client for this user
-            const client = await prisma.client.create({
-              data: {
-                email: user.email!,
-                name: user.name || "User",
-                googleId: account.providerAccountId,
-                emailVerified: true,
-                lastLoginAt: new Date(),
-              },
-            });
-
-            // Link user to client
-            await prisma.user.update({
-              where: { id: existingUser.id },
-              data: { clientId: client.id },
-            });
-
-            user.id = existingUser.id;
-          } else {
-            // Update existing client
-            await prisma.client.update({
-              where: { id: existingUser.clientId },
-              data: {
-                googleId: account.providerAccountId,
-                emailVerified: true,
-                lastLoginAt: new Date(),
-              },
-            });
-
-            user.id = existingUser.id;
-          }
-        }
-      }
+      // keep signIn simple and allow the flow to continue.
+      // Database linking/creation is handled in the `events.signIn` handler
+      // (which runs after the adapter has created/linked the user record).
       return true;
     },
     async session({ session, token }) {
@@ -152,6 +112,86 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
   },
+  // Use NextAuth events to perform post-creation/post-signin linking
+  events: {
+    async signIn({ user, account, profile, isNewUser }: any) {
+      try {
+        if (account?.provider === "google" && user?.email) {
+          // Find any existing client (from email/password signup flow)
+          const existingClient = await prisma.client.findUnique({
+            where: { email: user.email },
+          });
+
+          // Find the user record created/managed by the adapter
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email },
+            include: { client: true },
+          });
+
+          if (existingUser) {
+            // If user exists but has no client, link or create one
+            if (!existingUser.clientId) {
+              if (existingClient) {
+                // Link to existing client
+                await prisma.client.update({
+                  where: { id: existingClient.id },
+                  data: {
+                    googleId: account.providerAccountId,
+                    emailVerified: true,
+                    lastLoginAt: new Date(),
+                  },
+                });
+
+                await prisma.user.update({
+                  where: { id: existingUser.id },
+                  data: { clientId: existingClient.id },
+                });
+              } else {
+                // Create a new client and link
+                const client = await prisma.client.create({
+                  data: {
+                    email: user.email,
+                    name: user.name || "User",
+                    googleId: account.providerAccountId,
+                    emailVerified: true,
+                    lastLoginAt: new Date(),
+                  },
+                });
+
+                await prisma.user.update({
+                  where: { id: existingUser.id },
+                  data: { clientId: client.id },
+                });
+              }
+            } else {
+              // User already linked to a client — update client's googleId
+              await prisma.client.update({
+                where: { id: existingUser.clientId },
+                data: {
+                  googleId: account.providerAccountId,
+                  emailVerified: true,
+                  lastLoginAt: new Date(),
+                },
+              });
+            }
+          } else if (existingClient) {
+            // Rare case: client exists but user record not found. Update client googleId so when
+            // the adapter later creates the user it can be linked by email.
+            await prisma.client.update({
+              where: { id: existingClient.id },
+              data: {
+                googleId: account.providerAccountId,
+                emailVerified: true,
+                lastLoginAt: new Date(),
+              },
+            });
+          }
+        }
+      } catch (err) {
+        console.error("NextAuth events.signIn error:", err);
+      }
+    },
+  },
   pages: {
     signIn: "/login",
     error: "/login?error=true",
@@ -160,7 +200,7 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
     maxAge: 7 * 24 * 60 * 60, // 7
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: env.NEXTAUTH_SECRET,
 };
 
 const handler = NextAuth(authOptions);

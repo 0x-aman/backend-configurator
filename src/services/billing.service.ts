@@ -9,6 +9,7 @@ import {
 import { ClientService } from "./client.service";
 import type { SubscriptionStatus, SubscriptionDuration } from "@prisma/client";
 import { PLAN_LIMITS } from "@/src/config/permissions";
+import { env } from "@/src/config/env";
 
 export const BillingService = {
   async createCheckoutSession(
@@ -37,8 +38,8 @@ export const BillingService = {
 
     // Create or get price IDs for monthly and yearly subscriptions
     // In production, these should be created in Stripe dashboard and stored in env
-    const monthlyPriceId = process.env.STRIPE_MONTHLY_PRICE_ID;
-    const yearlyPriceId = process.env.STRIPE_YEARLY_PRICE_ID;
+    const monthlyPriceId = env.STRIPE_MONTHLY_PRICE_ID;
+    const yearlyPriceId = env.STRIPE_YEARLY_PRICE_ID;
 
     // If no price IDs in env, create them dynamically (for development)
     let priceId: string;
@@ -79,7 +80,7 @@ export const BillingService = {
       const stripeStatus = subscription.status; // 'active', 'trialing', 'past_due', etc.
       const currentPeriodEnd = new Date(subscription.current_period_end * 1000);
 
-      console.log('Processing subscription:', {
+      console.log("Processing subscription:", {
         subscriptionId,
         customerId,
         status: stripeStatus,
@@ -124,13 +125,16 @@ export const BillingService = {
       // Get the price ID
       const priceId = subscription.items.data[0]?.price.id;
 
-      console.log(`Updating client ${client.id} (${client.email}) subscription:`, {
-        status,
-        duration,
-        subscriptionId,
-        priceId,
-        stripeStatus,
-      });
+      console.log(
+        `Updating client ${client.id} (${client.email}) subscription:`,
+        {
+          status,
+          duration,
+          subscriptionId,
+          priceId,
+          stripeStatus,
+        }
+      );
 
       await prisma.client.update({
         where: { id: client.id },
@@ -147,7 +151,7 @@ export const BillingService = {
         `✅ Successfully updated client ${client.id} subscription status to ${status}`
       );
     } catch (error: any) {
-      console.error('Error in handleSubscriptionCreated:', {
+      console.error("Error in handleSubscriptionCreated:", {
         message: error.message,
         stack: error.stack,
       });

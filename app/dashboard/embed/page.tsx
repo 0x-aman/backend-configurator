@@ -14,6 +14,9 @@ import { Code, Copy, CheckCircle2, ExternalLink, Settings } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 
+// Client-side env variables (replaced at build time by Next.js)
+const NEXT_PUBLIC_APP_URL = process.env.NEXT_PUBLIC_APP_URL || "";
+
 interface ClientInfo {
   publicKey: string;
   apiKey: string;
@@ -53,7 +56,7 @@ export default function EmbedPage() {
 <script>
   (function() {
     var script = document.createElement('script');
-    script.src = '${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/embed.js';
+    script.src = '${NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/embed.js';
     script.setAttribute('data-public-key', '${client?.publicKey || "YOUR_PUBLIC_KEY"}');
     script.async = true;
     document.body.appendChild(script);

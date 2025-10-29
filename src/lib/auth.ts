@@ -4,7 +4,7 @@ import { sign, verify } from "jsonwebtoken";
 import { env } from "@/src/config/env";
 import { Client } from "@prisma/client";
 
-const JWT_SECRET = process.env.NEXTAUTH_SECRET || "";
+const JWT_SECRET = env.NEXTAUTH_SECRET;
 const JWT_EXPIRES_IN = "8WEEKS";
 
 export async function hashPassword(password: string): Promise<string> {

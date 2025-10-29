@@ -23,6 +23,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Remove Google ID and related Account records
+    // Account is linked to User (via userId), and User has clientId.
+    // Find the user for this client and delete the account rows by userId.
+    const user = await prisma.user.findUnique({
+      where: { clientId: client.id },
+    });
+
     await prisma.$transaction([
       prisma.client.update({
         where: { id: client.id },
@@ -30,7 +36,7 @@ export async function POST(request: NextRequest) {
       }),
       prisma.account.deleteMany({
         where: {
-          clientId: client.id,
+          userId: user?.id,
           provider: "google",
         },
       }),

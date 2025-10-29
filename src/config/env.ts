@@ -40,6 +40,15 @@ export const env = {
   // Subscription Pricing
   MONTHLY_PRICE: parseFloat(process.env.MONTHLY_PRICE || "99.00"),
   YEARLY_PRICE: parseFloat(process.env.YEARLY_PRICE || "999.00"),
+
+  // CORS
+  CORS_ORIGINS: process.env.CORS_ORIGINS || "*",
+
+  // Environment
+  NODE_ENV: process.env.NODE_ENV || "development",
+
+  // Next.js Public Variables (client-side)
+  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || "",
 };
 
 export function validateEnv() {

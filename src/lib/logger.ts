@@ -1,4 +1,5 @@
 // Logging utility
+import { env } from "@/src/config/env";
 
 export const logger = {
   info: (message: string, meta?: any) => {
@@ -11,7 +12,7 @@ export const logger = {
     console.warn(`[WARN] ${message}`, meta || '');
   },
   debug: (message: string, meta?: any) => {
-    if (process.env.NODE_ENV === 'development') {
+    if (env.NODE_ENV === 'development') {
       console.debug(`[DEBUG] ${message}`, meta || '');
     }
   },

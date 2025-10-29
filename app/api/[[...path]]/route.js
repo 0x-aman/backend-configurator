@@ -1,12 +1,13 @@
 import { v4 as uuidv4 } from "uuid";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
+import { env } from "@/src/config/env";
 
 // --- Helper: Handle CORS ---
 function handleCORS(response) {
   response.headers.set(
     "Access-Control-Allow-Origin",
-    process.env.CORS_ORIGINS || "*"
+    env.CORS_ORIGINS
   );
   response.headers.set(
     "Access-Control-Allow-Methods",
