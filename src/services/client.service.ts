@@ -121,9 +121,12 @@ export const ClientService = {
   },
 
   async getSafeClient(id: string) {
-    console.log(id, "id");
     const client = await this.getById(id);
-    const { passwordHash, resetToken, emailVerifyToken, ...safe } = client;
-    return safe;
+    const { resetToken, emailVerifyToken, ...safe } = client;
+    // Include hasPassword indicator but not the actual hash
+    return {
+      ...safe,
+      passwordHash: client.passwordHash ? "SET" : undefined,
+    };
   },
 };

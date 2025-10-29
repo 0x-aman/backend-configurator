@@ -2,7 +2,7 @@
 import { prisma } from '@/src/lib/prisma';
 import { stripe, createCheckoutSession, createCustomer, createCustomerPortalSession } from '@/src/lib/stripe';
 import { ClientService } from './client.service';
-import type { SubscriptionPlan, SubscriptionStatus } from '@prisma/client';
+import type { SubscriptionStatus, SubscriptionDuration } from '@prisma/client';
 import { PLAN_LIMITS } from '@/src/config/permissions';
 
 export const BillingService = {

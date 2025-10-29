@@ -43,7 +43,36 @@ export const ConfiguratorService = {
       include: {
         theme: true,
         categories: {
-          include: { options: true },
+          include: {
+            options: {
+              include: {
+                incompatibleWith: {
+                  include: {
+                    incompatibleOption: {
+                      select: {
+                        id: true,
+                        label: true,
+                        sku: true,
+                        categoryId: true,
+                      },
+                    },
+                  },
+                },
+                dependencies: {
+                  include: {
+                    dependsOnOption: {
+                      select: {
+                        id: true,
+                        label: true,
+                        sku: true,
+                        categoryId: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       },
     });
@@ -55,7 +84,36 @@ export const ConfiguratorService = {
       include: {
         theme: true,
         categories: {
-          include: { options: true },
+          include: {
+            options: {
+              include: {
+                incompatibleWith: {
+                  include: {
+                    incompatibleOption: {
+                      select: {
+                        id: true,
+                        label: true,
+                        sku: true,
+                        categoryId: true,
+                      },
+                    },
+                  },
+                },
+                dependencies: {
+                  include: {
+                    dependsOnOption: {
+                      select: {
+                        id: true,
+                        label: true,
+                        sku: true,
+                        categoryId: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
           orderBy: { orderIndex: "asc" },
         },
       },
@@ -80,6 +138,32 @@ export const ConfiguratorService = {
             options: {
               where: { isActive: true },
               orderBy: { orderIndex: "asc" },
+              include: {
+                incompatibleWith: {
+                  include: {
+                    incompatibleOption: {
+                      select: {
+                        id: true,
+                        label: true,
+                        sku: true,
+                        categoryId: true,
+                      },
+                    },
+                  },
+                },
+                dependencies: {
+                  include: {
+                    dependsOnOption: {
+                      select: {
+                        id: true,
+                        label: true,
+                        sku: true,
+                        categoryId: true,
+                      },
+                    },
+                  },
+                },
+              },
             },
           },
           orderBy: { orderIndex: "asc" },
@@ -100,7 +184,36 @@ export const ConfiguratorService = {
       include: {
         theme: true,
         categories: {
-          include: { options: true },
+          include: {
+            options: {
+              include: {
+                incompatibleWith: {
+                  include: {
+                    incompatibleOption: {
+                      select: {
+                        id: true,
+                        label: true,
+                        sku: true,
+                        categoryId: true,
+                      },
+                    },
+                  },
+                },
+                dependencies: {
+                  include: {
+                    dependsOnOption: {
+                      select: {
+                        id: true,
+                        label: true,
+                        sku: true,
+                        categoryId: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
           orderBy: { orderIndex: "asc" },
         },
       },

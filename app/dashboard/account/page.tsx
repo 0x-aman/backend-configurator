@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 import { useEffect, useState } from "react";
 import {
   Card,
@@ -12,10 +12,35 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, User } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Loader2,
+  User,
+  Shield,
+  Link as LinkIcon,
+  Unlink,
+  CheckCircle2,
+  AlertCircle,
+  Key,
+  Chrome,
+} from "lucide-react";
 import { toast } from "sonner";
 
-// ✅ Utility form section
+interface ClientProfile {
+  id: string;
+  name: string;
+  email: string;
+  companyName?: string;
+  phone?: string;
+  googleId?: string;
+  passwordHash?: string;
+  emailVerified: boolean;
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
 function FormField({
   id,
   label,
@@ -25,6 +50,7 @@ function FormField({
   disabled,
   placeholder,
   note,
+  testId,
 }: {
   id: string;
   label: string;
@@ -34,6 +60,7 @@ function FormField({
   disabled?: boolean;
   placeholder?: string;
   note?: string;
+  testId?: string;
 }) {
   return (
     <div className="space-y-2">
@@ -46,6 +73,7 @@ function FormField({
         disabled={disabled}
         placeholder={placeholder}
         className={disabled ? "bg-muted" : ""}
+        data-testid={testId}
       />
       {note && <p className="text-xs text-muted-foreground">{note}</p>}
     </div>
@@ -54,6 +82,7 @@ function FormField({
 
 export default function AccountPage() {
   const { data: session, update } = useSession();
+  const [clientData, setClientData] = useState<ClientProfile | null>(null);
   const [profile, setProfile] = useState({
     name: "",
     email: "",
@@ -65,11 +94,22 @@ export default function AccountPage() {
     new: "",
     confirm: "",
   });
+  const [newPasswordForOAuth, setNewPasswordForOAuth] = useState({
+    password: "",
+    confirm: "",
+  });
   const [loading, setLoading] = useState({
     profile: false,
     password: false,
-    fetching: false,
+    addPassword: false,
+    linkGoogle: false,
+    unlinkGoogle: false,
+    fetching: true,
   });
+
+  const hasPassword = !!clientData?.passwordHash;
+  const hasGoogle = !!clientData?.googleId;
+  const isOAuthOnly = hasGoogle && !hasPassword;
 
   const handleChange = (field: keyof typeof profile, value: string) =>
     setProfile((prev) => ({ ...prev, [field]: value }));
@@ -78,28 +118,32 @@ export default function AccountPage() {
     setPasswords((prev) => ({ ...prev, [field]: value }));
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      setLoading((l) => ({ ...l, fetching: true }));
-      try {
-        const res = await fetch("/api/auth/me");
-        if (!res.ok) throw new Error("Failed to fetch profile");
-        const { data } = await res.json();
-        console.log(data);
-        setProfile({
-          name: data?.name || "",
-          email: data?.email || "",
-          companyName: data?.companyName || "",
-          phone: data?.phone || "",
-        });
-      } catch (err) {
-        console.error("Failed to fetch profile:", err);
-        toast.error("Failed to load profile");
-      } finally {
-        setLoading((l) => ({ ...l, fetching: false }));
-      }
-    };
     fetchProfile();
   }, []);
+
+  const fetchProfile = async () => {
+    setLoading((l) => ({ ...l, fetching: true }));
+    try {
+      const res = await fetch("/api/auth/me");
+      if (!res.ok) throw new Error("Failed to fetch profile");
+      const { success, data } = await res.json();
+      
+      if (success && data) {
+        setClientData(data);
+        setProfile({
+          name: data.name || "",
+          email: data.email || "",
+          companyName: data.companyName || "",
+          phone: data.phone || "",
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch profile:", err);
+      toast.error("Failed to load profile");
+    } finally {
+      setLoading((l) => ({ ...l, fetching: false }));
+    }
+  };
 
   const updateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,7 +160,9 @@ export default function AccountPage() {
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to update profile");
+      const { success } = await res.json();
+      if (!success) throw new Error("Failed to update profile");
+      
       await update({ name: profile.name });
       toast.success("Profile updated successfully!");
     } catch (err) {
@@ -130,10 +176,12 @@ export default function AccountPage() {
   const changePassword = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (passwords.new !== passwords.confirm)
+    if (passwords.new !== passwords.confirm) {
       return toast.error("New passwords do not match");
-    if (passwords.new.length < 8)
+    }
+    if (passwords.new.length < 8) {
       return toast.error("Password must be at least 8 characters");
+    }
 
     setLoading((l) => ({ ...l, password: true }));
 
@@ -147,13 +195,12 @@ export default function AccountPage() {
         }),
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to change password");
-      }
+      const { success, error } = await res.json();
+      if (!success) throw new Error(error || "Failed to change password");
 
       toast.success("Password changed successfully!");
       setPasswords({ current: "", new: "", confirm: "" });
+      fetchProfile(); // Refresh to update hasPassword status
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Failed to change password");
@@ -162,10 +209,96 @@ export default function AccountPage() {
     }
   };
 
+  const addPasswordForOAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (newPasswordForOAuth.password !== newPasswordForOAuth.confirm) {
+      return toast.error("Passwords do not match");
+    }
+    if (newPasswordForOAuth.password.length < 8) {
+      return toast.error("Password must be at least 8 characters");
+    }
+
+    setLoading((l) => ({ ...l, addPassword: true }));
+
+    try {
+      const res = await fetch("/api/auth/add-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          password: newPasswordForOAuth.password,
+        }),
+      });
+
+      const { success, error } = await res.json();
+      if (!success) throw new Error(error || "Failed to add password");
+
+      toast.success("Password added successfully! You can now login with email and password.");
+      setNewPasswordForOAuth({ password: "", confirm: "" });
+      fetchProfile(); // Refresh to update hasPassword status
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Failed to add password");
+    } finally {
+      setLoading((l) => ({ ...l, addPassword: false }));
+    }
+  };
+
+  const linkGoogleAccount = async () => {
+    setLoading((l) => ({ ...l, linkGoogle: true }));
+    try {
+      // Trigger Google OAuth flow
+      await signIn("google", { 
+        callbackUrl: "/dashboard/account?linked=true" 
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to link Google account");
+      setLoading((l) => ({ ...l, linkGoogle: false }));
+    }
+  };
+
+  const unlinkGoogleAccount = async () => {
+    if (!hasPassword) {
+      toast.error("Cannot unlink Google account without setting a password first!");
+      return;
+    }
+
+    setLoading((l) => ({ ...l, unlinkGoogle: true }));
+
+    try {
+      const res = await fetch("/api/auth/unlink-google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const { success, error } = await res.json();
+      if (!success) throw new Error(error || "Failed to unlink Google account");
+
+      toast.success("Google account unlinked successfully!");
+      fetchProfile();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Failed to unlink Google account");
+    } finally {
+      setLoading((l) => ({ ...l, unlinkGoogle: false }));
+    }
+  };
+
+  if (loading.fetching) {
+    return (
+      <div className="p-6 lg:p-8 flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 lg:p-8">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Account Settings</h1>
+        <h1 className="text-3xl font-bold tracking-tight" data-testid="account-settings-title">
+          Account Settings
+        </h1>
         <p className="text-muted-foreground mt-2">
           Manage your profile information and security settings
         </p>
@@ -189,7 +322,8 @@ export default function AccountPage() {
                   label="Full Name"
                   value={profile.name}
                   onChange={(e) => handleChange("name", e.target.value)}
-                  disabled={loading.fetching || loading.profile}
+                  disabled={loading.profile}
+                  testId="profile-name-input"
                 />
                 <FormField
                   id="email"
@@ -198,6 +332,7 @@ export default function AccountPage() {
                   value={profile.email}
                   disabled
                   note="Email cannot be changed"
+                  testId="profile-email-input"
                 />
               </div>
 
@@ -207,8 +342,9 @@ export default function AccountPage() {
                   label="Company Name"
                   value={profile.companyName}
                   onChange={(e) => handleChange("companyName", e.target.value)}
-                  disabled={loading.fetching || loading.profile}
+                  disabled={loading.profile}
                   placeholder="Optional"
+                  testId="profile-company-input"
                 />
                 <FormField
                   id="phone"
@@ -216,12 +352,13 @@ export default function AccountPage() {
                   type="tel"
                   value={profile.phone}
                   onChange={(e) => handleChange("phone", e.target.value)}
-                  disabled={loading.fetching || loading.profile}
+                  disabled={loading.profile}
                   placeholder="Optional"
+                  testId="profile-phone-input"
                 />
               </div>
 
-              <Button type="submit" disabled={loading.profile}>
+              <Button type="submit" disabled={loading.profile} data-testid="save-profile-button">
                 {loading.profile ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -235,57 +372,273 @@ export default function AccountPage() {
           </CardContent>
         </Card>
 
-        {/* Password Section */}
+        {/* Security & Authentication Methods */}
         <Card>
           <CardHeader>
-            <CardTitle>Change Password</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Security & Login Methods
+            </CardTitle>
             <CardDescription>
-              Update your password to keep your account secure
+              Manage how you sign in to your account
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={changePassword} className="space-y-4">
-              <FormField
-                id="currentPassword"
-                label="Current Password"
-                type="password"
-                value={passwords.current}
-                onChange={(e) =>
-                  handlePasswordChange("current", e.target.value)
-                }
-                disabled={loading.password}
-              />
-              <FormField
-                id="newPassword"
-                label="New Password"
-                type="password"
-                value={passwords.new}
-                onChange={(e) => handlePasswordChange("new", e.target.value)}
-                disabled={loading.password}
-                note="Must be at least 8 characters"
-              />
-              <FormField
-                id="confirmPassword"
-                label="Confirm New Password"
-                type="password"
-                value={passwords.confirm}
-                onChange={(e) =>
-                  handlePasswordChange("confirm", e.target.value)
-                }
-                disabled={loading.password}
-              />
-
-              <Button type="submit" disabled={loading.password}>
-                {loading.password ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Changing...
-                  </>
-                ) : (
-                  "Change Password"
+          <CardContent className="space-y-6">
+            {/* Current Authentication Status */}
+            <div className="space-y-3">
+              <h3 className="font-medium text-sm">Active Login Methods</h3>
+              <div className="flex flex-wrap gap-2">
+                {hasPassword && (
+                  <Badge variant="default" className="flex items-center gap-1" data-testid="auth-method-password">
+                    <Key className="h-3 w-3" />
+                    Password Login
+                  </Badge>
                 )}
-              </Button>
-            </form>
+                {hasGoogle && (
+                  <Badge variant="default" className="flex items-center gap-1" data-testid="auth-method-google">
+                    <Chrome className="h-3 w-3" />
+                    Google OAuth
+                  </Badge>
+                )}
+                {!hasPassword && !hasGoogle && (
+                  <Badge variant="secondary">No authentication method set</Badge>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Google Account Management */}
+            <div className="space-y-4">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <h3 className="font-medium flex items-center gap-2">
+                    <Chrome className="h-4 w-4" />
+                    Google Account
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {hasGoogle
+                      ? "Your Google account is linked. You can sign in with Google."
+                      : "Link your Google account for faster sign-in."}
+                  </p>
+                </div>
+                <div>
+                  {hasGoogle ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={unlinkGoogleAccount}
+                      disabled={loading.unlinkGoogle || !hasPassword}
+                      data-testid="unlink-google-button"
+                    >
+                      {loading.unlinkGoogle ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Unlink className="mr-2 h-4 w-4" />
+                      )}
+                      Unlink
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={linkGoogleAccount}
+                      disabled={loading.linkGoogle}
+                      data-testid="link-google-button"
+                    >
+                      {loading.linkGoogle ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <LinkIcon className="mr-2 h-4 w-4" />
+                      )}
+                      Link Google
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {hasGoogle && !hasPassword && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Add a password to enable email/password login and to be able to unlink your Google account.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Password Management */}
+            {isOAuthOnly ? (
+              // Add Password for OAuth-only users
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-medium flex items-center gap-2">
+                    <Key className="h-4 w-4" />
+                    Add Password Login
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Set a password to enable email/password authentication
+                  </p>
+                </div>
+
+                <form onSubmit={addPasswordForOAuth} className="space-y-4">
+                  <FormField
+                    id="newPasswordOAuth"
+                    label="New Password"
+                    type="password"
+                    value={newPasswordForOAuth.password}
+                    onChange={(e) =>
+                      setNewPasswordForOAuth((prev) => ({
+                        ...prev,
+                        password: e.target.value,
+                      }))
+                    }
+                    disabled={loading.addPassword}
+                    note="Must be at least 8 characters"
+                    testId="add-password-input"
+                  />
+                  <FormField
+                    id="confirmPasswordOAuth"
+                    label="Confirm Password"
+                    type="password"
+                    value={newPasswordForOAuth.confirm}
+                    onChange={(e) =>
+                      setNewPasswordForOAuth((prev) => ({
+                        ...prev,
+                        confirm: e.target.value,
+                      }))
+                    }
+                    disabled={loading.addPassword}
+                    testId="add-password-confirm-input"
+                  />
+
+                  <Button
+                    type="submit"
+                    disabled={loading.addPassword}
+                    data-testid="add-password-button"
+                  >
+                    {loading.addPassword ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Adding Password...
+                      </>
+                    ) : (
+                      "Add Password"
+                    )}
+                  </Button>
+                </form>
+              </div>
+            ) : (
+              // Change Password for users who already have one
+              hasPassword && (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-medium flex items-center gap-2">
+                      <Key className="h-4 w-4" />
+                      Change Password
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Update your password to keep your account secure
+                    </p>
+                  </div>
+
+                  <form onSubmit={changePassword} className="space-y-4">
+                    <FormField
+                      id="currentPassword"
+                      label="Current Password"
+                      type="password"
+                      value={passwords.current}
+                      onChange={(e) =>
+                        handlePasswordChange("current", e.target.value)
+                      }
+                      disabled={loading.password}
+                      testId="current-password-input"
+                    />
+                    <FormField
+                      id="newPassword"
+                      label="New Password"
+                      type="password"
+                      value={passwords.new}
+                      onChange={(e) =>
+                        handlePasswordChange("new", e.target.value)
+                      }
+                      disabled={loading.password}
+                      note="Must be at least 8 characters"
+                      testId="new-password-input"
+                    />
+                    <FormField
+                      id="confirmPassword"
+                      label="Confirm New Password"
+                      type="password"
+                      value={passwords.confirm}
+                      onChange={(e) =>
+                        handlePasswordChange("confirm", e.target.value)
+                      }
+                      disabled={loading.password}
+                      testId="confirm-password-input"
+                    />
+
+                    <Button
+                      type="submit"
+                      disabled={loading.password}
+                      data-testid="change-password-button"
+                    >
+                      {loading.password ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Changing...
+                        </>
+                      ) : (
+                        "Change Password"
+                      )}
+                    </Button>
+                  </form>
+                </div>
+              )
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Account Info */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Account Information</CardTitle>
+            <CardDescription>Your account details and status</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Email Verified</span>
+              {clientData?.emailVerified ? (
+                <Badge variant="default" className="flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Verified
+                </Badge>
+              ) : (
+                <Badge variant="secondary">Not Verified</Badge>
+              )}
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Member Since</span>
+              <span>
+                {clientData?.createdAt
+                  ? new Date(clientData.createdAt).toLocaleDateString()
+                  : "N/A"}
+              </span>
+            </div>
+            {clientData?.lastLoginAt && (
+              <>
+                <Separator />
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Last Login</span>
+                  <span>
+                    {new Date(clientData.lastLoginAt).toLocaleString()}
+                  </span>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
