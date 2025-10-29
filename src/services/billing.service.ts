@@ -73,71 +73,86 @@ export const BillingService = {
   },
 
   async handleSubscriptionCreated(subscription: any) {
-    const customerId = subscription.customer;
-    const subscriptionId = subscription.id;
-    const stripeStatus = subscription.status; // 'active', 'trialing', 'past_due', etc.
-    const currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+    try {
+      const customerId = subscription.customer;
+      const subscriptionId = subscription.id;
+      const stripeStatus = subscription.status; // 'active', 'trialing', 'past_due', etc.
+      const currentPeriodEnd = new Date(subscription.current_period_end * 1000);
 
-    // Map Stripe status to our SubscriptionStatus enum
-    let status: SubscriptionStatus;
-    switch (stripeStatus) {
-      case "active":
-      case "trialing": // Map trialing to active since we don't support trials
-        status = "ACTIVE";
-        break;
-      case "past_due":
-        status = "PAST_DUE";
-        break;
-      case "canceled":
-      case "unpaid":
-        status = "CANCELED";
-        break;
-      case "incomplete":
-      case "incomplete_expired":
-      default:
-        status = "INACTIVE";
-        break;
+      console.log('Processing subscription:', {
+        subscriptionId,
+        customerId,
+        status: stripeStatus,
+        currentPeriodEnd,
+      });
+
+      // Map Stripe status to our SubscriptionStatus enum
+      let status: SubscriptionStatus;
+      switch (stripeStatus) {
+        case "active":
+        case "trialing": // Map trialing to active since we don't support trials
+          status = "ACTIVE";
+          break;
+        case "past_due":
+          status = "PAST_DUE";
+          break;
+        case "canceled":
+        case "unpaid":
+          status = "CANCELED";
+          break;
+        case "incomplete":
+        case "incomplete_expired":
+        default:
+          status = "INACTIVE";
+          break;
+      }
+
+      // Find client by Stripe customer ID
+      const client = await prisma.client.findUnique({
+        where: { stripeCustomerId: customerId },
+      });
+
+      if (!client) {
+        console.error(`No client found for Stripe customer: ${customerId}`);
+        throw new Error(`Client not found for customer ${customerId}`);
+      }
+
+      // Determine duration from price interval
+      const interval = subscription.items.data[0]?.price.recurring?.interval;
+      const duration = interval === "year" ? "YEARLY" : "MONTHLY";
+
+      // Get the price ID
+      const priceId = subscription.items.data[0]?.price.id;
+
+      console.log(`Updating client ${client.id} (${client.email}) subscription:`, {
+        status,
+        duration,
+        subscriptionId,
+        priceId,
+        stripeStatus,
+      });
+
+      await prisma.client.update({
+        where: { id: client.id },
+        data: {
+          subscriptionStatus: status,
+          subscriptionDuration: duration,
+          stripeSubscriptionId: subscriptionId,
+          stripePriceId: priceId,
+          subscriptionEndsAt: currentPeriodEnd,
+        },
+      });
+
+      console.log(
+        `✅ Successfully updated client ${client.id} subscription status to ${status}`
+      );
+    } catch (error: any) {
+      console.error('Error in handleSubscriptionCreated:', {
+        message: error.message,
+        stack: error.stack,
+      });
+      throw error;
     }
-
-    // Find client by Stripe customer ID
-    const client = await prisma.client.findUnique({
-      where: { stripeCustomerId: customerId },
-    });
-
-    if (!client) {
-      console.error(`No client found for Stripe customer: ${customerId}`);
-      return;
-    }
-
-    // Determine duration from price interval
-    const interval = subscription.items.data[0]?.price.recurring?.interval;
-    const duration = interval === "year" ? "YEARLY" : "MONTHLY";
-
-    // Get the price ID
-    const priceId = subscription.items.data[0]?.price.id;
-
-    console.log(`Updating client ${client.id} subscription:`, {
-      status,
-      duration,
-      subscriptionId,
-      priceId,
-      stripeStatus,
-    });
-
-    await prisma.client.update({
-      where: { id: client.id },
-      data: {
-        subscriptionStatus: status,
-        subscriptionDuration: duration,
-        stripeSubscriptionId: subscriptionId,
-        stripePriceId: priceId,
-        subscriptionEndsAt: currentPeriodEnd,
-      },
-    });
-
-    console.log(
-      `Successfully updated client ${client.id} subscription status to ${status}`
-    );
   },
 
   async handleSubscriptionUpdated(subscription: any) {

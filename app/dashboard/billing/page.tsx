@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -22,6 +24,8 @@ import {
   X,
   Download,
   Calendar,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
@@ -61,6 +65,8 @@ interface Transaction {
 }
 
 export default function BillingPage() {
+  const { data: session, update: updateSession } = useSession();
+  const searchParams = useSearchParams();
   const [billing, setBilling] = useState<BillingInfo | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,6 +75,30 @@ export default function BillingPage() {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [canceling, setCanceling] = useState(false);
 
+  // Check for payment success/cancel on mount
+  useEffect(() => {
+    const success = searchParams.get("success");
+    const canceled = searchParams.get("canceled");
+
+    if (success === "true") {
+      toast.success("Payment successful! Your subscription is now active.", {
+        duration: 5000,
+        icon: <CheckCircle className="h-5 w-5" />,
+      });
+      // Refresh data after successful payment
+      setTimeout(() => {
+        fetchBilling();
+        fetchTransactions();
+        updateSession(); // Refresh NextAuth session
+      }, 2000);
+    } else if (canceled === "true") {
+      toast.error("Payment was canceled. Please try again.", {
+        duration: 5000,
+        icon: <XCircle className="h-5 w-5" />,
+      });
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     fetchBilling();
     fetchTransactions();
@@ -76,19 +106,27 @@ export default function BillingPage() {
 
   const fetchBilling = async () => {
     try {
-      const response = await fetch("/api/client/me");
-      if (response.ok) {
-        const { data } = await response.json();
-        setBilling({
-          subscriptionStatus: data?.subscriptionStatus || "INACTIVE",
-          subscriptionDuration: data?.subscriptionDuration || null,
-          subscriptionEndsAt: data?.subscriptionEndsAt || null,
-          stripeCustomerId: data?.stripeCustomerId || null,
-        });
+      setLoading(true);
+      const response = await fetch("/api/client/me", {
+        cache: "no-store",
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.status}`);
       }
-    } catch (error) {
+      
+      const { data } = await response.json();
+      setBilling({
+        subscriptionStatus: data?.subscriptionStatus || "INACTIVE",
+        subscriptionDuration: data?.subscriptionDuration || null,
+        subscriptionEndsAt: data?.subscriptionEndsAt || null,
+        stripeCustomerId: data?.stripeCustomerId || null,
+      });
+    } catch (error: any) {
       console.error("Failed to fetch billing:", error);
-      toast.error("Failed to load billing information");
+      toast.error("Failed to load billing information", {
+        description: error.message || "Please try refreshing the page",
+      });
     } finally {
       setLoading(false);
     }
@@ -96,13 +134,25 @@ export default function BillingPage() {
 
   const fetchTransactions = async () => {
     try {
-      const response = await fetch("/api/billing/transactions");
-      if (response.ok) {
-        const { data } = await response.json();
-        setTransactions(data || []);
+      setLoadingTransactions(true);
+      const response = await fetch("/api/billing/transactions", {
+        cache: "no-store",
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Authentication failed. Please sign in again.");
+        }
+        throw new Error(`Failed to fetch: ${response.status}`);
       }
-    } catch (error) {
+      
+      const { data } = await response.json();
+      setTransactions(data || []);
+    } catch (error: any) {
       console.error("Failed to fetch transactions:", error);
+      toast.error("Failed to load transaction history", {
+        description: error.message || "Please try again later",
+      });
     } finally {
       setLoadingTransactions(false);
     }
@@ -121,16 +171,24 @@ export default function BillingPage() {
         }),
       });
 
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`);
+      }
+
       const json = await response.json();
       const data = json.data || json;
+      
       if (data.url) {
+        toast.loading("Redirecting to checkout...", { duration: 2000 });
         window.location.href = data.url;
       } else {
         throw new Error("No checkout URL received");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to create checkout session:", error);
-      toast.error("Failed to start checkout. Please try again.");
+      toast.error("Failed to start checkout", {
+        description: error.message || "Please try again or contact support",
+      });
       setActionLoading(false);
     }
   };
@@ -146,16 +204,24 @@ export default function BillingPage() {
         }),
       });
 
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`);
+      }
+
       const json = await response.json();
       const data = json.data || json;
+      
       if (data.url) {
+        toast.loading("Opening billing portal...", { duration: 2000 });
         window.location.href = data.url;
       } else {
         throw new Error("No portal URL received");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to open billing portal:", error);
-      toast.error("Failed to open billing portal. Please try again.");
+      toast.error("Failed to open billing portal", {
+        description: error.message || "Please try again or contact support",
+      });
       setActionLoading(false);
     }
   };
@@ -168,18 +234,27 @@ export default function BillingPage() {
       });
 
       const json = await response.json();
-      if (json.success) {
+      
+      if (response.ok && json.success) {
         toast.success(
-          "Subscription canceled. You'll have access until the end of your billing period."
+          "Subscription canceled successfully",
+          {
+            description: "You'll have access until the end of your billing period.",
+            duration: 5000,
+          }
         );
         setShowCancelDialog(false);
-        fetchBilling(); // Refresh billing info
+        // Refresh billing info and session
+        fetchBilling();
+        updateSession();
       } else {
         throw new Error(json.message || "Failed to cancel subscription");
       }
     } catch (error: any) {
       console.error("Failed to cancel subscription:", error);
-      toast.error(error.message || "Failed to cancel subscription");
+      toast.error("Failed to cancel subscription", {
+        description: error.message || "Please try again or contact support",
+      });
     } finally {
       setCanceling(false);
     }

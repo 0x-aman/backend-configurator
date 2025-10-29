@@ -18,7 +18,7 @@ export const AdminService = {
     ] = await Promise.all([
       prisma.client.count(),
       prisma.client.count({ where: { subscriptionStatus: "ACTIVE" } }),
-      prisma.client.count({ where: { subscriptionStatus: "TRIALING" } }),
+      prisma.client.count({ where: { subscriptionStatus: "INACTIVE" } }),
       prisma.configurator.count(),
       prisma.configurator.count({ where: { isPublished: true } }),
       prisma.quote.count(),
