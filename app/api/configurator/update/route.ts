@@ -1,24 +1,44 @@
-// Update configurator
-import { NextRequest } from 'next/server';
-import { authenticateRequest } from '@/src/middleware/auth';
-import { ConfiguratorService } from '@/src/services/configurator.service';
-import { success, fail } from '@/src/lib/response';
+import { NextRequest } from "next/server";
+import { ConfiguratorService } from "@/src/services/configurator.service";
+import { success, fail } from "@/src/lib/response";
+import { verifyEditToken } from "@/src/lib/verify-edit-token";
 
 export async function PUT(request: NextRequest) {
   try {
-    const client = await authenticateRequest(request);
     const body = await request.json();
+    const { token, ...data } = body;
 
-    const { id, ...data } = body;
-
-    if (!id) {
-      return fail('Configurator ID is required', 'VALIDATION_ERROR');
+    if (!token) {
+      return fail("Edit token is required", "VALIDATION_ERROR");
     }
 
-    const configurator = await ConfiguratorService.update(id, client.id, data);
+    // 🔒 Verify token validity and decode client/configurator info
+    const payload = await verifyEditToken(token);
+    const id = payload.configuratorId;
 
-    return success(configurator, 'Configurator updated');
+    if (!payload || !payload.clientId || !payload.configuratorId) {
+      return fail("Invalid or expired edit token", "UNAUTHORIZED", 401);
+    }
+
+    // Optional: ensure this token actually belongs to the configurator being edited
+    if (String(payload.configuratorId) !== String(id)) {
+      return fail("Configurator mismatch", "UNAUTHORIZED", 401);
+    }
+
+    // ✅ Perform the update
+    const updatedConfigurator = await ConfiguratorService.update(
+      id,
+      payload.clientId,
+      data
+    );
+
+    return success(updatedConfigurator, "Configurator updated successfully");
   } catch (error: any) {
-    return fail(error.message, 'UPDATE_ERROR', error.statusCode || 500);
+    console.error("Configurator update error:", error);
+    return fail(
+      error.message || "Failed to update configurator",
+      "UPDATE_ERROR",
+      500
+    );
   }
 }

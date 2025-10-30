@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { verify } from "jsonwebtoken";
 import { prisma } from "@/src/lib/prisma";
 import {
   success,
@@ -8,8 +7,11 @@ import {
   notFound,
   serverError,
 } from "@/src/lib/response";
-import { env } from "@/src/config/env";
+import { verifyEditToken } from "@/src/lib/verify-edit-token";
 
+// ======================================
+// CORS SETUP
+// ======================================
 const allowedOrigins = [
   "https://exact-dupe-engine.vercel.app",
   "http://localhost:8080",
@@ -33,45 +35,32 @@ export async function OPTIONS(req: Request) {
   return applyCors(res, origin);
 }
 
+// ======================================
+// VERIFY EDIT TOKEN
+// ======================================
 export async function POST(req: Request) {
   const origin = req.headers.get("origin");
 
   try {
     const body = await req.json().catch(() => ({}));
     const token = body?.token;
+
     if (!token) {
       const res = fail("Missing token", undefined, 400);
       return applyCors(res, origin);
     }
 
-    const secret = env.EDIT_TOKEN_SECRET;
-    if (!secret) {
-      console.error("EDIT_TOKEN_SECRET not set");
-      const res = serverError("Server misconfiguration");
+    // 🧠 Use the helper instead of inline JWT logic
+    const payload = await verifyEditToken(token);
+    if (!payload || !payload.clientId || !payload.configuratorId) {
+      const res = success({ valid: false });
       return applyCors(res, origin);
     }
 
-    let payload: any;
-    try {
-      payload = verify(token, secret) as any;
-    } catch (err) {
-      const res = unauthorized("Invalid token");
-      return applyCors(res, origin);
-    }
-
-    if (
-      !payload ||
-      payload.type !== "configurator_edit" ||
-      !payload.sub ||
-      !payload.configuratorId
-    ) {
-      const res = unauthorized("Invalid token payload");
-      return applyCors(res, origin);
-    }
-
+    // 🔎 Check configurator exists and ownership matches
     const configurator = await prisma.configurator.findUnique({
       where: { id: String(payload.configuratorId) },
-      select: { id: true, clientId: true },
+      select: { id: true, publicId: true, clientId: true },
     });
 
     if (!configurator) {
@@ -79,20 +68,21 @@ export async function POST(req: Request) {
       return applyCors(res, origin);
     }
 
-    if (configurator.clientId !== String(payload.sub)) {
+    if (configurator.clientId !== String(payload.clientId)) {
       const res = unauthorized("Ownership mismatch");
       return applyCors(res, origin);
     }
 
+    // ✅ Success: valid token
     const res = success({
       valid: true,
-      configuratorId: configurator.id,
-      clientId: configurator.clientId,
+      publicId: configurator.publicId,
     });
+
     return applyCors(res, origin);
   } catch (err) {
     console.error("verify-edit-token error:", err);
-    const res = serverError("Internal error");
+    const res = serverError("Internal server error");
     return applyCors(res, origin);
   }
 }

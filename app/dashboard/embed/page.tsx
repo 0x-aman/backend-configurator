@@ -273,7 +273,7 @@ export default function EmbedPage() {
                       window.location.hostname === "localhost"
                         ? VITE_HOST_LOCAL
                         : VITE_HOST_PROD;
-                    const url = `${host}/configurator/manage?admin=true&token=${encodeURIComponent(token)}`;
+                    const url = `${host}/?admin=true&token=${encodeURIComponent(token)}`;
                     window.open(url, "_blank");
                     toast.success("Editor opened");
                   } catch (err) {
@@ -283,7 +283,7 @@ export default function EmbedPage() {
                 }}
               >
                 <Settings className="mr-2 h-4 w-4" />
-                Manage
+                Manage Configurator
               </Button>
               <Button variant="outline" asChild>
                 <Link href="/configurator/preview" target="_blank">
