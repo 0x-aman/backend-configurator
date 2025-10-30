@@ -9,16 +9,18 @@ export async function PUT(request: NextRequest) {
     const { token, ...data } = body;
 
     if (!token) {
-      return fail("Edit token is required", "VALIDATION_ERROR");
+      return fail("Edit token is required", "VALIDATION_ERROR", 400);
     }
 
     // 🔒 Verify token validity and decode client/configurator info
     const payload = await verifyEditToken(token);
-    const id = payload.configuratorId;
 
+    // Check before destructuring anything
     if (!payload || !payload.clientId || !payload.configuratorId) {
       return fail("Invalid or expired edit token", "UNAUTHORIZED", 401);
     }
+
+    const id = payload.configuratorId;
 
     // Optional: ensure this token actually belongs to the configurator being edited
     if (String(payload.configuratorId) !== String(id)) {

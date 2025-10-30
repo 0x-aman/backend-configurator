@@ -12,7 +12,12 @@ export async function PUT(request: NextRequest) {
 
     if (!id) return fail("Category ID is required", "VALIDATION_ERROR");
 
-    const { clientId, configuratorId } = await verifyEditToken(token);
+    const payload = await verifyEditToken(token);
+    if (!payload) {
+      return unauthorized("Invalid or expired edit token");
+    }
+
+    const { clientId, configuratorId } = payload;
 
     const category = await prisma.category.findUnique({
       where: { id },
@@ -47,7 +52,12 @@ export async function DELETE(request: NextRequest) {
 
     if (!id) return fail("Category ID is required", "VALIDATION_ERROR");
 
-    const { clientId, configuratorId } = await verifyEditToken(token);
+    const payload = await verifyEditToken(token);
+    if (!payload) {
+      return unauthorized("Invalid or expired edit token");
+    }
+
+    const { clientId, configuratorId } = payload;
 
     const category = await prisma.category.findUnique({
       where: { id },

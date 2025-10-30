@@ -15,6 +15,7 @@ import { verifyEditToken } from "@/src/lib/verify-edit-token";
 const allowedOrigins = [
   "https://exact-dupe-engine.vercel.app",
   "http://localhost:8080",
+  "localhost",
 ];
 
 function applyCors(response: NextResponse, origin: string | null) {
@@ -50,8 +51,9 @@ export async function POST(req: Request) {
       return applyCors(res, origin);
     }
 
-    // 🧠 Use the helper instead of inline JWT logic
+    // The helper now returns null if token is invalid/expired
     const payload = await verifyEditToken(token);
+
     if (!payload || !payload.clientId || !payload.configuratorId) {
       const res = success({ valid: false });
       return applyCors(res, origin);

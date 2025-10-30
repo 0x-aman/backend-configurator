@@ -1,32 +1,31 @@
 // src/lib/verifyEditToken.ts
 import { verify } from "jsonwebtoken";
 import { env } from "@/src/config/env";
-import { unauthorized } from "@/src/lib/response";
 
 export async function verifyEditToken(token: string) {
-  if (!token) throw unauthorized("Missing edit token");
+  if (!token) return null;
 
   const secret = env.EDIT_TOKEN_SECRET;
   if (!secret) throw new Error("EDIT_TOKEN_SECRET not configured");
 
-  let payload: any;
   try {
-    payload = verify(token, secret) as any;
-  } catch {
-    throw unauthorized("Invalid or expired edit token");
-  }
+    const payload: any = verify(token, secret);
 
-  if (
-    !payload ||
-    payload.type !== "configurator_edit" ||
-    !payload.sub ||
-    !payload.configuratorId
-  ) {
-    throw unauthorized("Invalid token payload");
+    if (
+      !payload ||
+      payload.type !== "configurator_edit" ||
+      !payload.sub ||
+      !payload.configuratorId
+    ) {
+      return null;
+    }
+
+    return {
+      clientId: String(payload.sub),
+      configuratorId: String(payload.configuratorId),
+    };
+  } catch {
+    // token expired, malformed, or otherwise cursed
+    return null;
   }
-  console.log(payload, "payload");
-  return {
-    clientId: String(payload.sub),
-    configuratorId: String(payload.configuratorId),
-  };
 }

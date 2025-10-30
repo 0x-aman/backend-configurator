@@ -12,7 +12,12 @@ export async function PUT(request: NextRequest) {
 
     if (!id) return fail("Option ID is required", "VALIDATION_ERROR");
 
-    const { clientId, configuratorId } = await verifyEditToken(token);
+    const payload = await verifyEditToken(token);
+    if (!payload || !payload.clientId || !payload.configuratorId) {
+      return unauthorized("Invalid or expired edit token");
+    }
+
+    const { clientId, configuratorId } = payload;
 
     // Fetch option to confirm ownership through category -> configurator -> client
     const option = await prisma.option.findUnique({
@@ -52,7 +57,12 @@ export async function DELETE(request: NextRequest) {
 
     if (!id) return fail("Option ID is required", "VALIDATION_ERROR");
 
-    const { clientId, configuratorId } = await verifyEditToken(token);
+    const payload = await verifyEditToken(token);
+    if (!payload || !payload.clientId || !payload.configuratorId) {
+      return unauthorized("Invalid or expired edit token");
+    }
+
+    const { clientId, configuratorId } = payload;
 
     const option = await prisma.option.findUnique({
       where: { id },
