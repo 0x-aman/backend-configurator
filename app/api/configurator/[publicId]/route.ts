@@ -21,6 +21,7 @@ export async function GET(
     if (client.allowedDomains && client.allowedDomains.length > 0 && origin) {
       const originHost = new URL(origin).hostname;
       const isAllowed = client.allowedDomains.some((domain) => {
+        console.log(originHost, domain, "====");
         // Exact match or subdomain match
         return originHost === domain || originHost.endsWith(`.${domain}`);
       });

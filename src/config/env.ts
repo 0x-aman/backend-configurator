@@ -49,6 +49,9 @@ export const env = {
 
   // Next.js Public Variables (client-side)
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || "",
+
+  //edit token secret
+  EDIT_TOKEN_SECRET: process.env.EDIT_TOKEN_SECRET,
 };
 
 export function validateEnv() {

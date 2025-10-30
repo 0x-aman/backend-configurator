@@ -56,7 +56,7 @@ export default function EmbedPage() {
 <script>
   (function() {
     var script = document.createElement('script');
-    script.src = '${NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/embed.js';
+    script.src = '${NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "")}/embed.js';
     script.setAttribute('data-public-key', '${client?.publicKey || "YOUR_PUBLIC_KEY"}');
     script.async = true;
     document.body.appendChild(script);
@@ -220,11 +220,70 @@ export default function EmbedPage() {
               using our configurator editor.
             </p>
             <div className="flex gap-4">
-              <Button asChild data-testid="edit-configurator-button">
-                <Link href="/configurator/editor">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Edit Configurator
-                </Link>
+              <Button
+                data-testid="manage-configurator-button"
+                onClick={async () => {
+                  try {
+                    toast.dismiss();
+                    toast.loading("Opening editor...");
+                    // fetch list of configurators for this client
+                    const listRes = await fetch("/api/configurator/list");
+                    if (!listRes.ok) {
+                      toast.error("Failed to load configurators");
+                      return;
+                    }
+                    const listJson = await listRes.json();
+                    const configs = listJson?.data || [];
+                    if (!configs.length) {
+                      toast.error("No configurators found");
+                      return;
+                    }
+
+                    // pick the first configurator (if you want a selector, we can add one later)
+                    const configuratorId = configs[0].id;
+
+                    const tokenRes = await fetch(
+                      "/api/configurator/generate-edit-token",
+                      {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ configuratorId }),
+                      }
+                    );
+
+                    if (!tokenRes.ok) {
+                      const err = await tokenRes.json().catch(() => ({}));
+                      toast.error(
+                        err?.message || "Failed to create edit token"
+                      );
+                      return;
+                    }
+
+                    const tokenJson = await tokenRes.json();
+                    const token = tokenJson?.data?.token || tokenJson?.token;
+                    if (!token) {
+                      toast.error("No token returned");
+                      return;
+                    }
+
+                    const VITE_HOST_PROD =
+                      "https://exact-dupe-engine.vercel.app";
+                    const VITE_HOST_LOCAL = "http://localhost:8080";
+                    const host =
+                      window.location.hostname === "localhost"
+                        ? VITE_HOST_LOCAL
+                        : VITE_HOST_PROD;
+                    const url = `${host}/configurator/manage?admin=true&token=${encodeURIComponent(token)}`;
+                    window.open(url, "_blank");
+                    toast.success("Editor opened");
+                  } catch (err) {
+                    console.error(err);
+                    toast.error("Failed to open editor");
+                  }
+                }}
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Manage
               </Button>
               <Button variant="outline" asChild>
                 <Link href="/configurator/preview" target="_blank">
