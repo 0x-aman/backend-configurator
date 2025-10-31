@@ -17,7 +17,12 @@ export async function middleware(request: NextRequest) {
 
   // Example: Apply CORS for all API routes
   if (pathname.startsWith("/api")) {
-    const corsResponse = applyCors(request);
+    const allowedOrigins = [
+      "http://localhost:8080",
+      "https://exact-dupe-engine.vercel.app",
+    ];
+
+    const corsResponse = applyCors(request, allowedOrigins);
     if (corsResponse) return corsResponse;
   }
 
