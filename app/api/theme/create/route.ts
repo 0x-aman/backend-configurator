@@ -1,18 +1,31 @@
 // Create theme
-import { NextRequest } from 'next/server';
-import { authenticateRequest } from '@/src/middleware/auth';
-import { ThemeService } from '@/src/services/theme.service';
-import { success, fail, created } from '@/src/lib/response';
+import { NextRequest } from "next/server";
+import { ThemeService } from "@/src/services/theme.service";
+import { success, fail, created, unauthorized } from "@/src/lib/response";
+import { verifyEditToken } from "@/src/lib/verify-edit-token";
 
 export async function POST(request: NextRequest) {
   try {
-    const client = await authenticateRequest(request);
     const body = await request.json();
+    const { token, ...themeData } = body;
 
-    const theme = await ThemeService.create(client.id, body);
+    if (!token) {
+      return fail("Edit token is required", "VALIDATION_ERROR", 400);
+    }
 
-    return created(theme, 'Theme created');
+    // 🔒 Verify token validity and decode client info
+    const payload = await verifyEditToken(token);
+
+    if (!payload || !payload.clientId) {
+      return unauthorized("Invalid or expired edit token");
+    }
+
+    // ✅ Create theme for the client from the token
+    const theme = await ThemeService.create(payload.clientId, themeData);
+
+    return created(theme, "Theme created");
   } catch (error: any) {
-    return fail(error.message, 'CREATE_ERROR', 500);
+    console.error("Theme create error:", error);
+    return fail(error.message || "Failed to create theme", "CREATE_ERROR", 500);
   }
 }
