@@ -167,6 +167,23 @@ export function CustomPrismaAdapter(prisma: PrismaClient): Adapter {
           session_state: account.session_state,
         },
       });
+      // ✅ Update Client with googleId when linking Google account
+      if (account.provider === "google") {
+        const user = await prisma.user.findUnique({
+          where: { id: account.userId },
+          select: { clientId: true },
+        });
+
+        if (user?.clientId) {
+          await prisma.client.update({
+            where: { id: user.clientId },
+            data: {
+              googleId: account.providerAccountId,
+              emailVerified: true,
+            },
+          });
+        }
+      }
     },
 
     async unlinkAccount({

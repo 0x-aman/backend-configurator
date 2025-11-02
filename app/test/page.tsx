@@ -448,10 +448,12 @@ const API_ENDPOINTS: ApiEndpoint[] = [
   {
     name: "Delete Configurator",
     method: "DELETE",
-    path: "/api/configurator/delete?id=configurator_id_here",
-    description: "Delete configurator (pass ID as query parameter)",
+    path: "/api/configurator/delete?id=configurator_id_here&token=your_edit_token",
+    description: "Delete configurator (pass ID and token as query parameters)",
     category: "Configurator",
-    requiresAuth: true,
+    requiresAuth: false,
+    requiresEditToken: true,
+    notes: "Requires edit token from generate-edit-token endpoint",
   },
   {
     name: "Generate Edit Token",
@@ -493,9 +495,11 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     path: "/api/category/create",
     description: "Create a new category (Step 2 of full setup)",
     category: "Category",
-    requiresAuth: true,
+    requiresAuth: false,
+    requiresEditToken: true,
     defaultBody: JSON.stringify(
       {
+        token: "your_edit_token_here",
         configuratorId: "your_configurator_id",
         name: "Power Rating",
         categoryType: "POWER",
@@ -508,7 +512,7 @@ const API_ENDPOINTS: ApiEndpoint[] = [
       2
     ),
     notes:
-      "CategoryType options: GENERIC, COLOR, DIMENSION, MATERIAL, FEATURE, ACCESSORY, POWER, TEXT, FINISH, CUSTOM",
+      "CategoryType options: GENERIC, COLOR, DIMENSION, MATERIAL, FEATURE, ACCESSORY, POWER, TEXT, FINISH, CUSTOM. Requires edit token from generate-edit-token endpoint.",
   },
   {
     name: "Update Category",
@@ -516,9 +520,11 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     path: "/api/category/update",
     description: "Update category details",
     category: "Category",
-    requiresAuth: true,
+    requiresAuth: false,
+    requiresEditToken: true,
     defaultBody: JSON.stringify(
       {
+        token: "your_edit_token_here",
         id: "category_id_here",
         name: "Updated Category Name",
         orderIndex: 2,
@@ -527,6 +533,17 @@ const API_ENDPOINTS: ApiEndpoint[] = [
       null,
       2
     ),
+    notes: "Requires edit token from generate-edit-token endpoint",
+  },
+  {
+    name: "Delete Category",
+    method: "DELETE",
+    path: "/api/category/update?id=category_id_here&token=your_edit_token",
+    description: "Delete category (pass ID and token as query parameters)",
+    category: "Category",
+    requiresAuth: false,
+    requiresEditToken: true,
+    notes: "Requires edit token from generate-edit-token endpoint",
   },
 
   // ==================== OPTION ====================
@@ -544,9 +561,11 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     path: "/api/option/create",
     description: "Create a new option (Step 3 of full setup)",
     category: "Option",
-    requiresAuth: true,
+    requiresAuth: false,
+    requiresEditToken: true,
     defaultBody: JSON.stringify(
       {
+        token: "your_edit_token_here",
         categoryId: "your_category_id",
         label: "15A - 120V",
         sku: "PWR-15A",
@@ -559,6 +578,7 @@ const API_ENDPOINTS: ApiEndpoint[] = [
       null,
       2
     ),
+    notes: "Requires edit token from generate-edit-token endpoint",
   },
   {
     name: "Update Option",
@@ -566,9 +586,11 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     path: "/api/option/update",
     description: "Update option details and set incompatibilities",
     category: "Option",
-    requiresAuth: true,
+    requiresAuth: false,
+    requiresEditToken: true,
     defaultBody: JSON.stringify(
       {
+        token: "your_edit_token_here",
         id: "option_id_here",
         label: "Updated Option Label",
         price: 125.5,
@@ -577,7 +599,18 @@ const API_ENDPOINTS: ApiEndpoint[] = [
       null,
       2
     ),
-    notes: "Use incompatibleWith array to set option incompatibility rules",
+    notes:
+      "Use incompatibleWith array to set option incompatibility rules. Requires edit token from generate-edit-token endpoint",
+  },
+  {
+    name: "Delete Option",
+    method: "DELETE",
+    path: "/api/option/update?id=option_id_here&token=your_edit_token",
+    description: "Delete option (pass ID and token as query parameters)",
+    category: "Option",
+    requiresAuth: false,
+    requiresEditToken: true,
+    notes: "Requires edit token from generate-edit-token endpoint",
   },
 
   // ==================== THEME ====================
@@ -595,9 +628,11 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     path: "/api/theme/create",
     description: "Create a custom theme",
     category: "Theme",
-    requiresAuth: true,
+    requiresAuth: false,
+    requiresEditToken: true,
     defaultBody: JSON.stringify(
       {
+        token: "your_edit_token_here",
         name: "Custom Industrial Theme",
         description: "Dark theme for industrial applications",
         primaryColor: "220 70% 50%",
@@ -613,7 +648,8 @@ const API_ENDPOINTS: ApiEndpoint[] = [
       null,
       2
     ),
-    notes: "Colors use HSL format (hue saturation lightness)",
+    notes:
+      "Colors use HSL format (hue saturation lightness). Requires edit token from generate-edit-token endpoint",
   },
   {
     name: "Update Theme",
@@ -621,9 +657,11 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     path: "/api/theme/update",
     description: "Update theme settings",
     category: "Theme",
-    requiresAuth: true,
+    requiresAuth: false,
+    requiresEditToken: true,
     defaultBody: JSON.stringify(
       {
+        token: "your_edit_token_here",
         id: "theme_id_here",
         name: "Updated Theme Name",
         primaryColor: "200 80% 45%",
@@ -632,6 +670,17 @@ const API_ENDPOINTS: ApiEndpoint[] = [
       null,
       2
     ),
+    notes: "Requires edit token from generate-edit-token endpoint",
+  },
+  {
+    name: "Delete Theme",
+    method: "DELETE",
+    path: "/api/theme/update?id=theme_id_here&token=your_edit_token",
+    description: "Delete theme (pass ID and token as query parameters)",
+    category: "Theme",
+    requiresAuth: false,
+    requiresEditToken: true,
+    notes: "Requires edit token from generate-edit-token endpoint",
   },
 
   // ==================== QUOTE ====================

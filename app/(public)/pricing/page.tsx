@@ -24,7 +24,7 @@ export default function PricingPage() {
       name: "Monthly",
       price: "€99",
       period: "per month",
-      description: "Perfect for trying out Brillance",
+      description: "Perfect for trying out Konfigra",
       popular: false,
       features: [
         "Unlimited configurators",

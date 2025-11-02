@@ -489,7 +489,7 @@ export default function BillingPage() {
                     data-testid="unsubscribe-button"
                   >
                     <X className="mr-2 h-4 w-4" />
-                    Unsubscribe
+                    Cancel
                   </Button>
                 )}
               </div>
@@ -803,10 +803,10 @@ export default function BillingPage() {
           <p className="text-sm text-muted-foreground mb-4">
             Contact our support team at{" "}
             <a
-              href="mailto:support@brillance.com"
+              href="mailto:support@Konfigra.com"
               className="text-primary hover:underline"
             >
-              support@brillance.com
+              support@Konfigra.com
             </a>{" "}
             for any billing-related questions.
           </p>

@@ -105,15 +105,16 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background dark:from-primary/10 dark:via-background dark:to-background" />
         <div className="container mx-auto max-w-6xl text-center relative z-10">
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent">
-            Unleash the Power
+            Build Custom Products -
             <br className="hidden sm:inline" />
             <span className="bg-gradient-to-r from-primary via-primary to-primary/70 bg-clip-text text-transparent">
-              of AI Agents
+              Smarter, Faster
             </span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Accelerate your development workflow with intelligent AI agents that
-            write, review, and optimize your code.
+            Empower your customers to design and personalize products in real
+            time. Our intelligent product configurator SaaS makes customization
+            seamless, visual, and ready to scale.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/register">

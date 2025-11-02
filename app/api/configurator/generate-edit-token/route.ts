@@ -40,8 +40,8 @@ export async function POST(req: Request) {
 
     // ensure configurator belongs to client
     const configurator = await prisma.configurator.findUnique({
-      where: { id: configuratorId },
-      select: { id: true, clientId: true },
+      where: { publicId: configuratorId },
+      select: { id: true, publicId: true, clientId: true },
     });
 
     if (!configurator) {

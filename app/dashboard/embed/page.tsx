@@ -27,32 +27,44 @@ export default function EmbedPage() {
   const [client, setClient] = useState<ClientInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [publicId, setPublicId] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchClient = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch("/api/client/me");
-        if (response.ok) {
-          const { data } = await response.json();
+        // Fetch client info
+        const clientRes = await fetch("/api/client/me");
+        if (clientRes.ok) {
+          const { data } = await clientRes.json();
           setClient({
             publicKey: data?.publicKey || "",
             apiKey: data?.apiKey || "",
             domain: data?.domain || null,
           });
         }
+
+        // Fetch configurators list
+        const listRes = await fetch("/api/configurator/list");
+        if (listRes.ok) {
+          const listJson = await listRes.json();
+          const configs = listJson?.data || [];
+          if (configs.length > 0) {
+            setPublicId(configs[0].publicId);
+          }
+        }
       } catch (error) {
-        console.error("Failed to fetch client info:", error);
-        toast.error("Failed to load embed information");
+        console.error("Failed to fetch data:", error);
+        toast.error("Failed to load configurator data");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchClient();
+    fetchData();
   }, []);
 
-  const embedScript = `<!-- Brillance Configurator Embed -->
-<div id="brillance-configurator"></div>
+  const embedScript = `<!-- Konfigra Configurator Embed -->
+<div id="Konfigra-configurator"></div>
 <script>
   (function() {
     var script = document.createElement('script');
@@ -68,6 +80,54 @@ export default function EmbedPage() {
     setCopied(true);
     toast.success("Embed script copied to clipboard!");
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleManageConfigurator = async () => {
+    try {
+      toast.dismiss();
+      toast.loading("Opening editor...");
+
+      if (!publicId) {
+        toast.error("No configurator found");
+        return;
+      }
+
+      // get edit token
+      const tokenRes = await fetch("/api/configurator/generate-edit-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ configuratorId: publicId }),
+      });
+
+      if (!tokenRes.ok) {
+        const err = await tokenRes.json().catch(() => ({}));
+        toast.error(err?.message || "Failed to create edit token");
+        return;
+      }
+
+      const tokenJson = await tokenRes.json();
+      const token = tokenJson?.data?.token || tokenJson?.token;
+      if (!token) {
+        toast.error("No token returned");
+        return;
+      }
+
+      const VITE_HOST_PROD = "https://exact-dupe-engine.vercel.app";
+      const VITE_HOST_LOCAL = "http://localhost:8080";
+      const host =
+        window.location.hostname === "localhost"
+          ? VITE_HOST_LOCAL
+          : VITE_HOST_PROD;
+
+      const url = `${host}/?admin=true&token=${encodeURIComponent(token)}`;
+      window.open(url, "_blank");
+      toast.success("Editor opened");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to open editor");
+    } finally {
+      toast.dismiss();
+    }
   };
 
   return (
@@ -222,71 +282,19 @@ export default function EmbedPage() {
             <div className="flex gap-4">
               <Button
                 data-testid="manage-configurator-button"
-                onClick={async () => {
-                  try {
-                    toast.dismiss();
-                    toast.loading("Opening editor...");
-                    // fetch list of configurators for this client
-                    const listRes = await fetch("/api/configurator/list");
-                    if (!listRes.ok) {
-                      toast.error("Failed to load configurators");
-                      return;
-                    }
-                    const listJson = await listRes.json();
-                    const configs = listJson?.data || [];
-                    if (!configs.length) {
-                      toast.error("No configurators found");
-                      return;
-                    }
-
-                    // pick the first configurator (if you want a selector, we can add one later)
-                    const configuratorId = configs[0].id;
-
-                    const tokenRes = await fetch(
-                      "/api/configurator/generate-edit-token",
-                      {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ configuratorId }),
-                      }
-                    );
-
-                    if (!tokenRes.ok) {
-                      const err = await tokenRes.json().catch(() => ({}));
-                      toast.error(
-                        err?.message || "Failed to create edit token"
-                      );
-                      return;
-                    }
-
-                    const tokenJson = await tokenRes.json();
-                    const token = tokenJson?.data?.token || tokenJson?.token;
-                    if (!token) {
-                      toast.error("No token returned");
-                      return;
-                    }
-
-                    const VITE_HOST_PROD =
-                      "https://exact-dupe-engine.vercel.app";
-                    const VITE_HOST_LOCAL = "http://localhost:8080";
-                    const host =
-                      window.location.hostname === "localhost"
-                        ? VITE_HOST_LOCAL
-                        : VITE_HOST_PROD;
-                    const url = `${host}/?admin=true&token=${encodeURIComponent(token)}`;
-                    window.open(url, "_blank");
-                    toast.success("Editor opened");
-                  } catch (err) {
-                    console.error(err);
-                    toast.error("Failed to open editor");
-                  }
-                }}
+                onClick={handleManageConfigurator}
               >
                 <Settings className="mr-2 h-4 w-4" />
                 Manage Configurator
               </Button>
-              <Button variant="outline" asChild>
-                <Link href="/configurator/preview" target="_blank">
+
+              <Button variant="outline" asChild disabled={!publicId}>
+                <Link
+                  href={
+                    publicId ? `http://localhost:8080/?apiKey=${publicId}` : "#"
+                  }
+                  target="_blank"
+                >
                   <ExternalLink className="mr-2 h-4 w-4" />
                   Preview
                 </Link>

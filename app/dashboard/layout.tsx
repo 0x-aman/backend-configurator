@@ -110,7 +110,7 @@ export default function DashboardLayout({
                   alt="Logo"
                   width={256}
                   height={64}
-                  className="h-12 w-auto"
+                  className="h-12 w-auto "
                   priority
                 />
               </div>
@@ -163,7 +163,7 @@ export default function DashboardLayout({
               alt="Logo"
               width={256}
               height={64}
-              className="h-12 w-auto"
+              className="h-12 w-auto scale-[1.1]"
               priority
             />
           </div>

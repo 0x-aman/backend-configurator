@@ -16,7 +16,7 @@ export function corsHeaders(origin?: string, allowedOrigins?: string[]) {
         headers["Access-Control-Allow-Credentials"] = "true";
       }
     } else {
-      headers["Access-Control-Allow-Origin"] = "http://localhost:8080";
+      headers["Access-Control-Allow-Origin"] = "localhost";
     }
   }
 

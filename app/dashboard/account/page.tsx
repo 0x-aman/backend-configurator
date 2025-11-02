@@ -298,6 +298,7 @@ export default function AccountPage() {
   };
 
   const validateDomain = (domain: string): boolean => {
+    if (domain === "localhost") return true;
     // Basic domain validation regex
     const domainRegex =
       /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$/i;

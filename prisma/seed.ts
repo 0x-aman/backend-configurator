@@ -2,1257 +2,1007 @@ import {
   PrismaClient,
   SubscriptionStatus,
   SubscriptionDuration,
+  CategoryType,
+  QuoteStatus,
+  FileType,
+  AnalyticsEventType,
+  TextColorMode,
 } from "@prisma/client";
 import { hash } from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Starting comprehensive seed with TONS of data...");
+  console.log("🌱 Starting seed with real file URLs...");
 
   // ========================================
-  // CREATE MULTIPLE CLIENTS WITH DIFFERENT STATUSES
+  // CREATE SINGLE CLIENT
   // ========================================
 
-  const clients = [];
-
-  // Client 1: Active Monthly Subscriber (Owner of most configurators)
-  const client1 = await prisma.client.create({
+  const client = await prisma.client.create({
     data: {
-      email: "john.furniture@example.com",
+      email: "test@gmail.com",
       passwordHash: await hash("password123", 10),
-      name: "John Smith",
-      companyName: "Luxury Furniture Co.",
+      name: "Alex Johnson",
+      companyName: "Tech Solutions Inc.",
       emailVerified: true,
-      subscriptionStatus: "ACTIVE" as SubscriptionStatus,
-      subscriptionDuration: "MONTHLY" as SubscriptionDuration,
-      stripeCustomerId: "cus_test_123456",
-      stripeSubscriptionId: "sub_test_123456",
+      subscriptionStatus: SubscriptionStatus.ACTIVE,
+      subscriptionDuration: SubscriptionDuration.MONTHLY,
+      stripeCustomerId: "cus_tech_solutions_001",
+      stripeSubscriptionId: "sub_tech_solutions_001",
       stripePriceId: "price_monthly_99",
       subscriptionEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      apiKey: "sk_live_john_furniture_12345",
-      publicKey: "pk_live_john_furniture_12345",
-      domain: "luxury-furniture.com",
-      allowedDomains: ["luxury-furniture.com", "www.luxury-furniture.com"],
-      monthlyRequests: 1250,
+      apiKey: "sk_live_tech_solutions_001",
+      publicKey: "pk_live_tech_solutions_001",
+      domain: "tech-solutions.com",
+      allowedDomains: ["tech-solutions.com", "www.tech-solutions.com"],
+      monthlyRequests: 850,
       requestLimit: 10000,
-      phone: "+1-555-0101",
-      avatarUrl: "https://i.pravatar.cc/150?img=12",
+      phone: "+1-555-0100",
+      avatarUrl:
+        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face",
+      monthlyPrice: 99.0,
+      yearlyPrice: 999.0,
     },
   });
-  clients.push(client1);
 
-  // Create User for client1 (for Next-Auth)
+  // Create User for client (for Next-Auth)
   await prisma.user.create({
     data: {
-      email: client1.email,
-      name: client1.name,
+      email: client.email,
+      name: client.name,
       emailVerified: new Date(),
-      clientId: client1.id,
+      clientId: client.id,
+      image: client.avatarUrl,
     },
   });
 
-  console.log("✅ Created Client 1: John Smith (ACTIVE - MONTHLY)");
-
-  // Client 2: Active Yearly Subscriber
-  const client2 = await prisma.client.create({
-    data: {
-      email: "sarah.industrial@example.com",
-      passwordHash: await hash("password456", 10),
-      name: "Sarah Johnson",
-      companyName: "Precision Industrial Solutions",
-      emailVerified: true,
-      subscriptionStatus: "ACTIVE" as SubscriptionStatus,
-      subscriptionDuration: "YEARLY" as SubscriptionDuration,
-      stripeCustomerId: "cus_test_789012",
-      stripeSubscriptionId: "sub_test_789012",
-      stripePriceId: "price_yearly_999",
-      subscriptionEndsAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-      apiKey: "sk_live_sarah_industrial_67890",
-      publicKey: "pk_live_sarah_industrial_67890",
-      domain: "precision-industrial.com",
-      allowedDomains: [
-        "precision-industrial.com",
-        "portal.precision-industrial.com",
-      ],
-      monthlyRequests: 3450,
-      requestLimit: 50000,
-      phone: "+1-555-0202",
-      avatarUrl: "https://i.pravatar.cc/150?img=5",
-      googleId: "google_sarah_12345",
-    },
-  });
-  clients.push(client2);
-
-  await prisma.user.create({
-    data: {
-      email: client2.email,
-      name: client2.name,
-      emailVerified: new Date(),
-      image: client2.avatarUrl,
-      clientId: client2.id,
-    },
-  });
-
-  console.log("✅ Created Client 2: Sarah Johnson (ACTIVE - YEARLY)");
-
-  // Client 3: Inactive (New Signup)
-  const client3 = await prisma.client.create({
-    data: {
-      email: "mike.newbie@example.com",
-      passwordHash: await hash("password789", 10),
-      name: "Mike Chen",
-      companyName: "Chen Design Studio",
-      emailVerified: true,
-      subscriptionStatus: "INACTIVE" as SubscriptionStatus,
-      apiKey: "sk_test_mike_chen_24680",
-      publicKey: "pk_test_mike_chen_24680",
-      monthlyRequests: 15,
-      requestLimit: 1000,
-      phone: "+1-555-0303",
-    },
-  });
-  clients.push(client3);
-
-  await prisma.user.create({
-    data: {
-      email: client3.email,
-      name: client3.name,
-      emailVerified: new Date(),
-      clientId: client3.id,
-    },
-  });
-
-  console.log("✅ Created Client 3: Mike Chen (INACTIVE)");
-
-  // Client 4: Past Due
-  const client4 = await prisma.client.create({
-    data: {
-      email: "lisa.pastdue@example.com",
-      passwordHash: await hash("password321", 10),
-      name: "Lisa Anderson",
-      companyName: "Anderson Enterprises",
-      emailVerified: true,
-      subscriptionStatus: "PAST_DUE" as SubscriptionStatus,
-      subscriptionDuration: "MONTHLY" as SubscriptionDuration,
-      stripeCustomerId: "cus_test_345678",
-      stripeSubscriptionId: "sub_test_345678",
-      subscriptionEndsAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
-      apiKey: "sk_live_lisa_anderson_13579",
-      publicKey: "pk_live_lisa_anderson_13579",
-      monthlyRequests: 890,
-      requestLimit: 10000,
-      phone: "+1-555-0404",
-    },
-  });
-  clients.push(client4);
-
-  console.log("✅ Created Client 4: Lisa Anderson (PAST_DUE)");
-
-  // Client 5: Canceled Subscription
-  const client5 = await prisma.client.create({
-    data: {
-      email: "tom.canceled@example.com",
-      passwordHash: await hash("password654", 10),
-      name: "Tom Williams",
-      companyName: "Williams Manufacturing",
-      emailVerified: true,
-      subscriptionStatus: "CANCELED" as SubscriptionStatus,
-      stripeCustomerId: "cus_test_901234",
-      subscriptionEndsAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // 15 days ago
-      apiKey: "sk_live_tom_williams_97531",
-      publicKey: "pk_live_tom_williams_97531",
-      monthlyRequests: 25,
-      requestLimit: 10000,
-      phone: "+1-555-0505",
-    },
-  });
-  clients.push(client5);
-
-  console.log("✅ Created Client 5: Tom Williams (CANCELED)");
+  console.log("✅ Created Client: Alex Johnson (ACTIVE - MONTHLY)");
 
   // ========================================
-  // CREATE THEMES
+  // CREATE THEME
   // ========================================
 
-  const themes = [];
-
-  // Theme 1: Modern Light (for Client 1)
-  const theme1 = await prisma.theme.create({
+  const theme = await prisma.theme.create({
     data: {
-      clientId: client1.id,
-      name: "Modern Light",
-      description: "Clean and minimalist light theme with blue accents",
+      clientId: client.id,
+      name: "Professional Blue",
+      description: "Clean professional theme with blue accents",
       isDefault: true,
       isActive: true,
-      primaryColor: "220 70% 50%", // Blue
-      secondaryColor: "340 70% 50%", // Pink
-      accentColor: "280 70% 50%", // Purple
+      primaryColor: "210 100% 50%",
+      secondaryColor: "340 70% 50%",
+      accentColor: "160 80% 40%",
       backgroundColor: "0 0% 100%",
       surfaceColor: "0 0% 98%",
       textColor: "0 0% 10%",
+      textColorMode: TextColorMode.AUTO,
       fontFamily: "Inter, sans-serif",
       borderRadius: "0.5rem",
       spacingUnit: "1rem",
       maxWidth: "1200px",
     },
   });
-  themes.push(theme1);
 
-  // Theme 2: Dark Professional (for Client 1)
-  const theme2 = await prisma.theme.create({
-    data: {
-      clientId: client1.id,
-      name: "Dark Professional",
-      description: "Elegant dark theme for luxury brands",
-      isDefault: false,
-      isActive: true,
-      primaryColor: "210 40% 60%", // Muted blue
-      secondaryColor: "45 100% 60%", // Gold
-      accentColor: "180 30% 50%", // Teal
-      backgroundColor: "0 0% 10%",
-      surfaceColor: "0 0% 15%",
-      textColor: "0 0% 95%",
-      textColorMode: "WHITE",
-      fontFamily: "Montserrat, sans-serif",
-      borderRadius: "0.25rem",
-      spacingUnit: "1.25rem",
-      maxWidth: "1400px",
-    },
-  });
-  themes.push(theme2);
-
-  // Theme 3: Industrial (for Client 2)
-  const theme3 = await prisma.theme.create({
-    data: {
-      clientId: client2.id,
-      name: "Industrial Gray",
-      description: "Professional theme for industrial clients",
-      isDefault: true,
-      isActive: true,
-      primaryColor: "200 10% 40%", // Steel gray
-      secondaryColor: "30 100% 50%", // Orange
-      accentColor: "0 0% 20%", // Dark gray
-      backgroundColor: "0 0% 96%",
-      surfaceColor: "0 0% 100%",
-      textColor: "0 0% 15%",
-      fontFamily: "Roboto, sans-serif",
-      borderRadius: "0.125rem",
-      spacingUnit: "0.875rem",
-      maxWidth: "1600px",
-    },
-  });
-  themes.push(theme3);
-
-  // Theme 4: Colorful Creative (for Client 3)
-  const theme4 = await prisma.theme.create({
-    data: {
-      clientId: client3.id,
-      name: "Vibrant Creative",
-      description: "Bold and colorful theme for creative industries",
-      isDefault: true,
-      isActive: true,
-      primaryColor: "340 85% 60%", // Hot pink
-      secondaryColor: "160 80% 50%", // Turquoise
-      accentColor: "50 100% 55%", // Yellow
-      backgroundColor: "0 0% 99%",
-      surfaceColor: "0 0% 100%",
-      textColor: "0 0% 5%",
-      fontFamily: "Poppins, sans-serif",
-      borderRadius: "1rem",
-      spacingUnit: "1.5rem",
-      maxWidth: "1300px",
-    },
-  });
-  themes.push(theme4);
-
-  console.log("✅ Created 4 themes");
+  console.log("✅ Created theme: Professional Blue");
 
   // ========================================
-  // CREATE CONFIGURATORS
+  // CREATE SINGLE CONFIGURATOR - CUSTOM GAMING PC BUILDER
   // ========================================
 
-  const configurators = [];
-
-  // Configurator 1: Custom Sofa Designer (Client 1)
-  const sofa = await prisma.configurator.create({
+  const gamingPC = await prisma.configurator.create({
     data: {
-      clientId: client1.id,
-      themeId: theme1.id,
-      name: "Custom Sofa Designer",
+      clientId: client.id,
+      themeId: theme.id,
+      name: "Custom Gaming PC Builder",
       description:
-        "Design your perfect luxury sofa with premium materials and customization options",
-      slug: "custom-sofa",
+        "Build your ultimate gaming PC with premium components and real-time compatibility checking",
+      slug: "custom-gaming-pc",
       isActive: true,
       isPublished: true,
       publishedAt: new Date(),
       currency: "USD",
       currencySymbol: "$",
+      language: "en",
+      timezone: "UTC",
+      metaTitle: "Custom Gaming PC Builder | Tech Solutions Inc.",
+      metaDescription:
+        "Design your dream gaming PC with our interactive configurator. Choose CPUs, GPUs, RAM, storage and more.",
+      ogImage:
+        "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=1200&h=630&fit=crop",
       allowQuotes: true,
       requireEmail: true,
       autoPricing: true,
       showTotal: true,
-      metaTitle: "Custom Sofa Designer | Luxury Furniture Co.",
-      metaDescription:
-        "Design your dream sofa with our interactive 3D configurator. Choose size, fabric, color, and features.",
-      ogImage: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc",
+      accessToken: "config_token_gaming_pc_001",
     },
   });
-  configurators.push(sofa);
 
-  // Configurator 2: Office Desk Builder (Client 1)
-  const desk = await prisma.configurator.create({
-    data: {
-      clientId: client1.id,
-      themeId: theme2.id,
-      name: "Executive Desk Builder",
-      description:
-        "Create your ideal workspace with our premium desk configurator",
-      slug: "executive-desk",
-      isActive: true,
-      isPublished: true,
-      publishedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      currency: "USD",
-      currencySymbol: "$",
-      allowQuotes: true,
-      requireEmail: true,
-      autoPricing: true,
-      showTotal: true,
-      metaTitle: "Executive Desk Builder | Custom Office Furniture",
-      metaDescription:
-        "Build your perfect executive desk with drawers, cable management, and premium finishes.",
-    },
-  });
-  configurators.push(desk);
-
-  // Configurator 3: Water Jet Cutting (Client 2)
-  const waterjet = await prisma.configurator.create({
-    data: {
-      clientId: client2.id,
-      themeId: theme3.id,
-      name: "Industrial Water Jet Cutting Service",
-      description:
-        "Configure custom water jet cutting for metal, stone, glass, and composite materials",
-      slug: "waterjet-cutting",
-      isActive: true,
-      isPublished: true,
-      publishedAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-      currency: "USD",
-      currencySymbol: "$",
-      allowQuotes: true,
-      requireEmail: true,
-      autoPricing: true,
-      showTotal: true,
-      metaTitle: "Water Jet Cutting Service | Precision Industrial",
-      metaDescription:
-        "Professional water jet cutting services with ±0.025mm precision for industrial applications.",
-      ogImage: "https://images.unsplash.com/photo-1581092160607-ee67e74599ef",
-    },
-  });
-  configurators.push(waterjet);
-
-  // Configurator 4: CNC Machining (Client 2)
-  const cnc = await prisma.configurator.create({
-    data: {
-      clientId: client2.id,
-      themeId: theme3.id,
-      name: "CNC Machining Quote Calculator",
-      description: "Get instant quotes for precision CNC machining services",
-      slug: "cnc-machining",
-      isActive: true,
-      isPublished: true,
-      publishedAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
-      currency: "USD",
-      currencySymbol: "$",
-      allowQuotes: true,
-      requireEmail: true,
-      autoPricing: true,
-      showTotal: true,
-      metaTitle: "CNC Machining Quotes | 3-Axis, 4-Axis, 5-Axis",
-      metaDescription:
-        "Professional CNC machining for prototypes and production. Aluminum, steel, titanium, and plastics.",
-    },
-  });
-  configurators.push(cnc);
-
-  // Configurator 5: Kitchen Cabinet Designer (Client 1)
-  const kitchen = await prisma.configurator.create({
-    data: {
-      clientId: client1.id,
-      themeId: theme1.id,
-      name: "Kitchen Cabinet Designer",
-      description:
-        "Design your dream kitchen with custom cabinets, countertops, and hardware",
-      slug: "kitchen-cabinets",
-      isActive: true,
-      isPublished: false, // Draft
-      currency: "USD",
-      currencySymbol: "$",
-      allowQuotes: true,
-      requireEmail: true,
-      autoPricing: false,
-      showTotal: false,
-      metaTitle: "Custom Kitchen Cabinet Designer",
-      metaDescription:
-        "Design custom kitchen cabinets with our 3D configurator tool.",
-    },
-  });
-  configurators.push(kitchen);
-
-  // Configurator 6: T-Shirt Customizer (Client 3)
-  const tshirt = await prisma.configurator.create({
-    data: {
-      clientId: client3.id,
-      themeId: theme4.id,
-      name: "Custom T-Shirt Designer",
-      description:
-        "Create your own custom t-shirt with text, colors, and graphics",
-      slug: "tshirt-designer",
-      isActive: true,
-      isPublished: true,
-      publishedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-      currency: "USD",
-      currencySymbol: "$",
-      allowQuotes: false,
-      requireEmail: false,
-      autoPricing: true,
-      showTotal: true,
-      metaTitle: "Custom T-Shirt Designer | Print Your Design",
-      metaDescription:
-        "Design and order custom t-shirts online. Add text, choose colors, upload images.",
-    },
-  });
-  configurators.push(tshirt);
-
-  console.log("✅ Created 6 configurators");
+  console.log("✅ Created Configurator: Custom Gaming PC Builder");
 
   // ========================================
-  // SOFA CONFIGURATOR - DETAILED CATEGORIES & OPTIONS
+  // GAMING PC CONFIGURATOR - 5 CATEGORIES
   // ========================================
 
-  // Size Category
-  const sofaSize = await prisma.category.create({
+  // Category 1: Processor (CPU) - REQUIRED
+  const cpuCategory = await prisma.category.create({
     data: {
-      configuratorId: sofa.id,
-      name: "Sofa Size",
-      categoryType: "DIMENSION",
-      description:
-        "Choose your sofa size based on your space and seating needs",
+      configuratorId: gamingPC.id,
+      name: "Processor (CPU)",
+      categoryType: CategoryType.POWER,
+      description: "Select the brain of your gaming PC",
       helpText:
-        "Measure your space carefully. Allow 12 inches on each side for proper room flow.",
+        "Higher core counts and clock speeds improve gaming performance",
       isPrimary: true,
       isRequired: true,
       orderIndex: 1,
-      icon: "📏",
-      imageUrl: "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e",
+      icon: "⚡",
+      imageUrl:
+        "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=800&h=400&fit=crop",
+      minSelections: 1,
+      maxSelections: 1,
+      attributesTemplate: [
+        {
+          name: "brand",
+          type: "SELECT",
+          label: "Brand",
+          options: ["Intel", "AMD"],
+        },
+        {
+          name: "cores",
+          type: "NUMBER",
+          label: "Core Count",
+        },
+        {
+          name: "threads",
+          type: "NUMBER",
+          label: "Thread Count",
+        },
+        {
+          name: "socket",
+          type: "SELECT",
+          label: "Socket Type",
+          options: ["LGA1700", "AM5"],
+        },
+        {
+          name: "tdp",
+          type: "NUMBER",
+          label: "TDP (W)",
+        },
+      ],
     },
   });
 
-  await prisma.option.createMany({
-    data: [
-      {
-        categoryId: sofaSize.id,
-        label: "Loveseat (2-Seater)",
-        description:
-          "Cozy seating for two. Perfect for apartments and small living rooms.",
-        price: 899.0,
-        cost: 450.0,
-        sku: "SOFA-SIZE-2S",
+  // CPU Options
+  const cpuOptions = await Promise.all([
+    prisma.option.create({
+      data: {
+        categoryId: cpuCategory.id,
+        label: "Intel Core i5-13600K",
+        description: "6P+8E cores, up to 5.1GHz - Excellent value for gaming",
+        price: 299.99,
+        cost: 220.0,
+        sku: "CPU-INTEL-I5-13600K",
         orderIndex: 1,
-        isActive: true,
-        isDefault: false,
-        inStock: true,
-        stockQuantity: 25,
-        dimensions: { width: 150, depth: 90, height: 85, seatHeight: 45 },
-        weight: 35.5,
-        attributeValues: {
-          seats: 2,
-          width_cm: 150,
-          depth_cm: 90,
-          height_cm: 85,
-        },
-        imageUrl: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc",
-        thumbnailUrl:
-          "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400",
-        gallery: [
-          "https://images.unsplash.com/photo-1555041469-a586c61ea9bc",
-          "https://images.unsplash.com/photo-1540574163026-643ea20ade25",
-        ],
-      },
-      {
-        categoryId: sofaSize.id,
-        label: "Standard (3-Seater)",
-        description:
-          "Our most popular size. Comfortable seating for three people with balanced proportions.",
-        price: 1299.0,
-        cost: 650.0,
-        sku: "SOFA-SIZE-3S",
-        orderIndex: 2,
         isActive: true,
         isDefault: true,
         isPopular: true,
         inStock: true,
         stockQuantity: 45,
-        dimensions: { width: 210, depth: 90, height: 85, seatHeight: 45 },
-        weight: 48.0,
         attributeValues: {
-          seats: 3,
-          width_cm: 210,
-          depth_cm: 90,
-          height_cm: 85,
+          brand: "Intel",
+          cores: "6P+8E",
+          threads: 20,
+          baseClock: "3.5GHz",
+          boostClock: "5.1GHz",
+          cache: "24MB",
+          socket: "LGA1700",
+          tdp: 125,
         },
         imageUrl:
-          "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e",
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=400&h=300&fit=crop",
         thumbnailUrl:
-          "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=400",
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=200&h=150&fit=crop",
+        gallery: [
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=600&h=400&fit=crop",
+          "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=600&h=400&fit=crop",
+        ],
       },
-      {
-        categoryId: sofaSize.id,
-        label: "Grand (4-Seater)",
-        description:
-          "Spacious family sofa with room for everyone. Ideal for larger living spaces.",
-        price: 1799.0,
-        cost: 900.0,
-        sku: "SOFA-SIZE-4S",
+    }),
+    prisma.option.create({
+      data: {
+        categoryId: cpuCategory.id,
+        label: "AMD Ryzen 7 7800X3D",
+        description: "8 cores, 3D V-Cache technology - Best for gaming",
+        price: 449.99,
+        cost: 350.0,
+        sku: "CPU-AMD-R7-7800X3D",
+        orderIndex: 2,
+        isActive: true,
+        isDefault: false,
+        isPopular: true,
+        inStock: true,
+        stockQuantity: 32,
+        attributeValues: {
+          brand: "AMD",
+          cores: 8,
+          threads: 16,
+          baseClock: "4.2GHz",
+          boostClock: "5.0GHz",
+          cache: "96MB",
+          socket: "AM5",
+          tdp: 120,
+        },
+        imageUrl:
+          "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=200&h=150&fit=crop",
+      },
+    }),
+    prisma.option.create({
+      data: {
+        categoryId: cpuCategory.id,
+        label: "Intel Core i9-14900K",
+        description: "8P+16E cores, up to 6.0GHz - Ultimate performance",
+        price: 589.99,
+        cost: 480.0,
+        sku: "CPU-INTEL-I9-14900K",
         orderIndex: 3,
         isActive: true,
         isDefault: false,
         inStock: true,
         stockQuantity: 18,
-        dimensions: { width: 270, depth: 90, height: 85, seatHeight: 45 },
-        weight: 62.5,
         attributeValues: {
-          seats: 4,
-          width_cm: 270,
-          depth_cm: 90,
-          height_cm: 85,
+          brand: "Intel",
+          cores: "8P+16E",
+          threads: 32,
+          baseClock: "3.2GHz",
+          boostClock: "6.0GHz",
+          cache: "36MB",
+          socket: "LGA1700",
+          tdp: 125,
         },
+        imageUrl:
+          "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=200&h=150&fit=crop",
       },
-      {
-        categoryId: sofaSize.id,
-        label: "Estate (5-Seater)",
-        description:
-          "Maximum luxury and space. Perfect for entertaining or large families.",
-        price: 2399.0,
-        cost: 1200.0,
-        sku: "SOFA-SIZE-5S",
+    }),
+    prisma.option.create({
+      data: {
+        categoryId: cpuCategory.id,
+        label: "AMD Ryzen 5 7600X",
+        description: "6 cores, AM5 platform - Great budget gaming option",
+        price: 229.99,
+        cost: 180.0,
+        sku: "CPU-AMD-R5-7600X",
         orderIndex: 4,
+        isActive: true,
+        isDefault: false,
+        inStock: true,
+        stockQuantity: 60,
+        attributeValues: {
+          brand: "AMD",
+          cores: 6,
+          threads: 12,
+          baseClock: "4.7GHz",
+          boostClock: "5.3GHz",
+          cache: "32MB",
+          socket: "AM5",
+          tdp: 105,
+        },
+        imageUrl:
+          "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=200&h=150&fit=crop",
+      },
+    }),
+  ]);
+
+  // Category 2: Graphics Card (GPU) - REQUIRED
+  const gpuCategory = await prisma.category.create({
+    data: {
+      configuratorId: gamingPC.id,
+      name: "Graphics Card (GPU)",
+      categoryType: CategoryType.POWER,
+      description: "Choose your graphics card for stunning visuals",
+      helpText:
+        "Higher VRAM and clock speeds deliver better gaming performance",
+      isPrimary: true,
+      isRequired: true,
+      orderIndex: 2,
+      icon: "🎮",
+      imageUrl:
+        "https://images.unsplash.com/photo-1591488320449-011701bb6704?w=800&h=400&fit=crop",
+      minSelections: 1,
+      maxSelections: 1,
+      attributesTemplate: [
+        {
+          name: "brand",
+          type: "SELECT",
+          label: "Brand",
+          options: ["NVIDIA", "AMD"],
+        },
+        {
+          name: "vram",
+          type: "TEXT",
+          label: "VRAM Capacity",
+        },
+        {
+          name: "powerRequirement",
+          type: "TEXT",
+          label: "Minimum PSU",
+        },
+        {
+          name: "length",
+          type: "NUMBER",
+          label: "Length (mm)",
+        },
+      ],
+    },
+  });
+
+  // GPU Options
+  const gpuOptions = await Promise.all([
+    prisma.option.create({
+      data: {
+        categoryId: gpuCategory.id,
+        label: "NVIDIA RTX 4060 8GB",
+        description: "Great 1080p gaming with DLSS 3 support",
+        price: 299.99,
+        cost: 240.0,
+        sku: "GPU-NVIDIA-RTX4060-8G",
+        orderIndex: 1,
+        isActive: true,
+        isDefault: true,
+        isPopular: true,
+        inStock: true,
+        stockQuantity: 55,
+        attributeValues: {
+          brand: "NVIDIA",
+          vram: "8GB",
+          memoryType: "GDDR6",
+          coreClock: "1830MHz",
+          boostClock: "2460MHz",
+          powerRequirement: "550W",
+          length: 240,
+        },
+        imageUrl:
+          "https://images.unsplash.com/photo-1591488320449-011701bb6704?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1591488320449-011701bb6704?w=200&h=150&fit=crop",
+        gallery: [
+          "https://images.unsplash.com/photo-1591488320449-011701bb6704?w=600&h=400&fit=crop",
+          "https://images.unsplash.com/photo-1626218174358-7769486c4b79?w=600&h=400&fit=crop",
+        ],
+      },
+    }),
+    prisma.option.create({
+      data: {
+        categoryId: gpuCategory.id,
+        label: "AMD RX 7700 XT 12GB",
+        description: "Excellent 1440p gaming performance",
+        price: 449.99,
+        cost: 380.0,
+        sku: "GPU-AMD-RX7700XT-12G",
+        orderIndex: 2,
+        isActive: true,
+        isDefault: false,
+        isPopular: true,
+        inStock: true,
+        stockQuantity: 38,
+        attributeValues: {
+          brand: "AMD",
+          vram: "12GB",
+          memoryType: "GDDR6",
+          coreClock: "1700MHz",
+          boostClock: "2600MHz",
+          powerRequirement: "600W",
+          length: 267,
+        },
+        imageUrl:
+          "https://images.unsplash.com/photo-1626218174358-7769486c4b79?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1626218174358-7769486c4b79?w=200&h=150&fit=crop",
+      },
+    }),
+    prisma.option.create({
+      data: {
+        categoryId: gpuCategory.id,
+        label: "NVIDIA RTX 4070 SUPER 12GB",
+        description: "Premium 1440p and entry 4K gaming",
+        price: 599.99,
+        cost: 520.0,
+        sku: "GPU-NVIDIA-RTX4070S-12G",
+        orderIndex: 3,
+        isActive: true,
+        isDefault: false,
+        inStock: true,
+        stockQuantity: 25,
+        attributeValues: {
+          brand: "NVIDIA",
+          vram: "12GB",
+          memoryType: "GDDR6X",
+          coreClock: "1980MHz",
+          boostClock: "2475MHz",
+          powerRequirement: "650W",
+          length: 245,
+        },
+        imageUrl:
+          "https://images.unsplash.com/photo-1626218174358-7769486c4b79?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1626218174358-7769486c4b79?w=200&h=150&fit=crop",
+      },
+    }),
+    prisma.option.create({
+      data: {
+        categoryId: gpuCategory.id,
+        label: "AMD RX 7900 XTX 24GB",
+        description: "4K gaming beast with massive VRAM",
+        price: 949.99,
+        cost: 850.0,
+        sku: "GPU-AMD-RX7900XTX-24G",
+        orderIndex: 4,
+        isActive: true,
+        isDefault: false,
+        inStock: true,
+        stockQuantity: 15,
+        attributeValues: {
+          brand: "AMD",
+          vram: "24GB",
+          memoryType: "GDDR6",
+          coreClock: "1900MHz",
+          boostClock: "2500MHz",
+          powerRequirement: "800W",
+          length: 287,
+        },
+        imageUrl:
+          "https://images.unsplash.com/photo-1626218174358-7769486c4b79?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1626218174358-7769486c4b79?w=200&h=150&fit=crop",
+      },
+    }),
+    prisma.option.create({
+      data: {
+        categoryId: gpuCategory.id,
+        label: "NVIDIA RTX 4090 24GB",
+        description: "Ultimate gaming performance for 4K and beyond",
+        price: 1599.99,
+        cost: 1450.0,
+        sku: "GPU-NVIDIA-RTX4090-24G",
+        orderIndex: 5,
         isActive: true,
         isDefault: false,
         inStock: true,
         stockQuantity: 8,
-        lowStockThreshold: 10,
-        dimensions: { width: 330, depth: 90, height: 85, seatHeight: 45 },
-        weight: 78.0,
         attributeValues: {
-          seats: 5,
-          width_cm: 330,
-          depth_cm: 90,
-          height_cm: 85,
+          brand: "NVIDIA",
+          vram: "24GB",
+          memoryType: "GDDR6X",
+          coreClock: "2235MHz",
+          boostClock: "2520MHz",
+          powerRequirement: "850W",
+          length: 304,
         },
+        imageUrl:
+          "https://images.unsplash.com/photo-1626218174358-7769486c4b79?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1626218174358-7769486c4b79?w=200&h=150&fit=crop",
+        gallery: [
+          "https://images.unsplash.com/photo-1626218174358-7769486c4b79?w=600&h=400&fit=crop",
+          "https://images.unsplash.com/photo-1591488320449-011701bb6704?w=600&h=400&fit=crop",
+        ],
       },
-    ],
-  });
+    }),
+  ]);
 
-  // Fabric Color Category
-  const sofaColor = await prisma.category.create({
+  // Category 3: Memory (RAM) - REQUIRED
+  const ramCategory = await prisma.category.create({
     data: {
-      configuratorId: sofa.id,
-      name: "Fabric Color",
-      categoryType: "COLOR",
-      description: "Select from our curated palette of premium fabric colors",
-      helpText:
-        "Request free fabric swatches to see colors in your home lighting.",
-      isPrimary: false,
-      isRequired: true,
-      orderIndex: 2,
-      icon: "🎨",
-    },
-  });
-
-  await prisma.option.createMany({
-    data: [
-      {
-        categoryId: sofaColor.id,
-        label: "Cloud Gray",
-        description: "Elegant light gray - timeless and versatile",
-        price: 0,
-        sku: "FAB-CLOUD",
-        color: "Gray",
-        hexColor: "#D3D3D3",
-        orderIndex: 1,
-        isDefault: true,
-        isPopular: true,
-        inStock: true,
-        attributeValues: {
-          colorName: "Cloud Gray",
-          hex: "#D3D3D3",
-          colorFamily: "Neutral",
-        },
-      },
-      {
-        categoryId: sofaColor.id,
-        label: "Navy Blue",
-        description: "Classic navy - sophisticated and calming",
-        price: 75.0,
-        cost: 35.0,
-        sku: "FAB-NAVY",
-        color: "Blue",
-        hexColor: "#001F3F",
-        orderIndex: 2,
-        isPopular: true,
-        inStock: true,
-        attributeValues: {
-          colorName: "Navy Blue",
-          hex: "#001F3F",
-          colorFamily: "Blue",
-        },
-      },
-      {
-        categoryId: sofaColor.id,
-        label: "Charcoal Black",
-        description: "Deep charcoal - modern and dramatic",
-        price: 75.0,
-        cost: 35.0,
-        sku: "FAB-CHARCOAL",
-        color: "Black",
-        hexColor: "#36454F",
-        orderIndex: 3,
-        inStock: true,
-        attributeValues: {
-          colorName: "Charcoal Black",
-          hex: "#36454F",
-          colorFamily: "Neutral",
-        },
-      },
-      {
-        categoryId: sofaColor.id,
-        label: "Cream Beige",
-        description: "Warm beige - inviting and cozy",
-        price: 0,
-        sku: "FAB-CREAM",
-        color: "Beige",
-        hexColor: "#F5F5DC",
-        orderIndex: 4,
-        inStock: true,
-        attributeValues: {
-          colorName: "Cream Beige",
-          hex: "#F5F5DC",
-          colorFamily: "Neutral",
-        },
-      },
-      {
-        categoryId: sofaColor.id,
-        label: "Forest Green",
-        description: "Rich emerald green - bold and luxurious",
-        price: 100.0,
-        cost: 50.0,
-        sku: "FAB-FOREST",
-        color: "Green",
-        hexColor: "#2C5F2D",
-        orderIndex: 5,
-        inStock: true,
-        attributeValues: {
-          colorName: "Forest Green",
-          hex: "#2C5F2D",
-          colorFamily: "Green",
-        },
-      },
-      {
-        categoryId: sofaColor.id,
-        label: "Burgundy Red",
-        description: "Deep wine red - elegant and warm",
-        price: 100.0,
-        cost: 50.0,
-        sku: "FAB-BURG",
-        color: "Red",
-        hexColor: "#800020",
-        orderIndex: 6,
-        inStock: true,
-        attributeValues: {
-          colorName: "Burgundy Red",
-          hex: "#800020",
-          colorFamily: "Red",
-        },
-      },
-      {
-        categoryId: sofaColor.id,
-        label: "Mustard Yellow",
-        description: "Vibrant mustard - cheerful and contemporary",
-        price: 100.0,
-        cost: 50.0,
-        sku: "FAB-MUSTARD",
-        color: "Yellow",
-        hexColor: "#FFDB58",
-        orderIndex: 7,
-        inStock: true,
-        stockQuantity: 12,
-        lowStockThreshold: 15,
-        attributeValues: {
-          colorName: "Mustard Yellow",
-          hex: "#FFDB58",
-          colorFamily: "Yellow",
-        },
-      },
-      {
-        categoryId: sofaColor.id,
-        label: "Blush Pink",
-        description: "Soft blush pink - romantic and modern",
-        price: 100.0,
-        cost: 50.0,
-        sku: "FAB-BLUSH",
-        color: "Pink",
-        hexColor: "#FFB6C1",
-        orderIndex: 8,
-        inStock: true,
-        attributeValues: {
-          colorName: "Blush Pink",
-          hex: "#FFB6C1",
-          colorFamily: "Pink",
-        },
-      },
-      {
-        categoryId: sofaColor.id,
-        label: "Sage Green",
-        description: "Muted sage - calming and natural",
-        price: 100.0,
-        cost: 50.0,
-        sku: "FAB-SAGE",
-        color: "Green",
-        hexColor: "#9CAF88",
-        orderIndex: 9,
-        isPopular: true,
-        inStock: true,
-        attributeValues: {
-          colorName: "Sage Green",
-          hex: "#9CAF88",
-          colorFamily: "Green",
-        },
-      },
-      {
-        categoryId: sofaColor.id,
-        label: "Slate Blue",
-        description: "Dusty blue gray - serene and sophisticated",
-        price: 100.0,
-        cost: 50.0,
-        sku: "FAB-SLATE",
-        color: "Blue",
-        hexColor: "#6A7B8B",
-        orderIndex: 10,
-        inStock: true,
-        attributeValues: {
-          colorName: "Slate Blue",
-          hex: "#6A7B8B",
-          colorFamily: "Blue",
-        },
-      },
-    ],
-  });
-
-  // Material Category
-  const sofaMaterial = await prisma.category.create({
-    data: {
-      configuratorId: sofa.id,
-      name: "Upholstery Material",
-      categoryType: "MATERIAL",
-      description: "Choose from our selection of premium upholstery materials",
-      helpText:
-        "Each material has different care requirements and durability ratings.",
+      configuratorId: gamingPC.id,
+      name: "Memory (RAM)",
+      categoryType: CategoryType.POWER,
+      description: "Select your system memory",
+      helpText: "Higher speed and lower latency improve gaming performance",
       isPrimary: false,
       isRequired: true,
       orderIndex: 3,
-      icon: "🧵",
+      icon: "💾",
+      imageUrl:
+        "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=800&h=400&fit=crop",
+      minSelections: 1,
+      maxSelections: 1,
+      attributesTemplate: [
+        {
+          name: "capacity",
+          type: "TEXT",
+          label: "Total Capacity",
+        },
+        {
+          name: "type",
+          type: "SELECT",
+          label: "Memory Type",
+          options: ["DDR4", "DDR5"],
+        },
+        {
+          name: "speed",
+          type: "TEXT",
+          label: "Speed",
+        },
+        {
+          name: "latency",
+          type: "TEXT",
+          label: "CAS Latency",
+        },
+      ],
     },
   });
 
-  await prisma.option.createMany({
-    data: [
-      {
-        categoryId: sofaMaterial.id,
-        label: "Standard Polyester",
-        description:
-          "Durable and easy-care polyester blend. Great for everyday use.",
-        price: 0,
-        sku: "MAT-POLY",
-        materialType: "Polyester",
-        orderIndex: 1,
-        isDefault: true,
-        inStock: true,
-        attributeValues: {
-          material: "Polyester Blend",
-          durability: "Good",
-          cleanability: "Easy",
-          martindale: 50000,
-        },
-      },
-      {
-        categoryId: sofaMaterial.id,
-        label: "Premium Linen",
-        description:
-          "Natural breathable linen with beautiful texture. Eco-friendly choice.",
-        price: 250.0,
-        cost: 125.0,
-        sku: "MAT-LINEN",
-        materialType: "Linen",
-        orderIndex: 2,
-        isPopular: true,
-        inStock: true,
-        attributeValues: {
-          material: "European Linen",
-          durability: "Very Good",
-          cleanability: "Moderate",
-          martindale: 40000,
-          sustainable: true,
-        },
-      },
-      {
-        categoryId: sofaMaterial.id,
-        label: "Soft Velvet",
-        description:
-          "Luxurious soft-touch velvet with rich depth. Elegant and comfortable.",
-        price: 350.0,
-        cost: 175.0,
-        sku: "MAT-VELVET",
-        materialType: "Velvet",
-        orderIndex: 3,
-        isPopular: true,
-        inStock: true,
-        attributeValues: {
-          material: "Cotton Velvet",
-          durability: "Good",
-          cleanability: "Professional",
-          martindale: 35000,
-          luxuryFeel: true,
-        },
-      },
-      {
-        categoryId: sofaMaterial.id,
-        label: "Genuine Leather",
-        description:
-          "Top-grain genuine leather. Ages beautifully and extremely durable.",
-        price: 800.0,
-        cost: 400.0,
-        sku: "MAT-LEATHER",
-        materialType: "Leather",
-        orderIndex: 4,
-        inStock: true,
-        stockQuantity: 15,
-        attributeValues: {
-          material: "Top-Grain Leather",
-          durability: "Excellent",
-          cleanability: "Easy",
-          warranty: "10 years",
-          natural: true,
-        },
-      },
-      {
-        categoryId: sofaMaterial.id,
-        label: "Performance Fabric",
-        description:
-          "Stain-resistant, water-repellent performance fabric. Ideal for families and pets.",
-        price: 300.0,
-        cost: 150.0,
-        sku: "MAT-PERF",
-        materialType: "Performance",
-        orderIndex: 5,
-        inStock: true,
-        attributeValues: {
-          material: "Crypton Performance",
-          durability: "Excellent",
-          cleanability: "Very Easy",
-          martindale: 75000,
-          stainResistant: true,
-          waterRepellent: true,
-          petFriendly: true,
-        },
-      },
-      {
-        categoryId: sofaMaterial.id,
-        label: "Bouclé Fabric",
-        description:
-          "Trendy textured bouclé with a sophisticated loop texture.",
-        price: 400.0,
-        cost: 200.0,
-        sku: "MAT-BOUCLE",
-        materialType: "Boucle",
-        orderIndex: 6,
-        inStock: true,
-        stockQuantity: 10,
-        lowStockThreshold: 12,
-        attributeValues: {
-          material: "Wool Bouclé",
-          durability: "Very Good",
-          cleanability: "Moderate",
-          martindale: 45000,
-          trendy: true,
-        },
-      },
-    ],
-  });
-
-  // Legs Category
-  const sofaLegs = await prisma.category.create({
-    data: {
-      configuratorId: sofa.id,
-      name: "Leg Style",
-      categoryType: "FEATURE",
-      description: "Select the perfect leg style to match your aesthetic",
-      isPrimary: false,
-      isRequired: true,
-      orderIndex: 4,
-      icon: "🦵",
-    },
-  });
-
-  await prisma.option.createMany({
-    data: [
-      {
-        categoryId: sofaLegs.id,
-        label: "Tapered Wood Legs",
-        description: "Classic mid-century modern tapered legs in natural wood",
-        price: 0,
-        sku: "LEG-WOOD-TAPER",
-        orderIndex: 1,
-        isDefault: true,
-        isPopular: true,
-        inStock: true,
-        attributeValues: {
-          style: "Tapered",
-          material: "Oak Wood",
-          height_cm: 15,
-          finish: "Natural",
-        },
-      },
-      {
-        categoryId: sofaLegs.id,
-        label: "Chrome Metal Legs",
-        description: "Sleek modern chrome-plated metal legs",
-        price: 125.0,
-        cost: 60.0,
-        sku: "LEG-CHROME",
-        orderIndex: 2,
-        inStock: true,
-        attributeValues: {
-          style: "Straight",
-          material: "Chrome Steel",
-          height_cm: 15,
-          finish: "Polished",
-        },
-      },
-      {
-        categoryId: sofaLegs.id,
-        label: "Matte Black Metal",
-        description: "Industrial matte black powder-coated steel legs",
-        price: 125.0,
-        cost: 60.0,
-        sku: "LEG-BLACK",
-        orderIndex: 3,
-        isPopular: true,
-        inStock: true,
-        attributeValues: {
-          style: "Straight",
-          material: "Steel",
-          height_cm: 15,
-          finish: "Matte Black",
-        },
-      },
-      {
-        categoryId: sofaLegs.id,
-        label: "Brass Finished Legs",
-        description: "Elegant brass-finished metal legs for a luxe look",
-        price: 175.0,
-        cost: 85.0,
-        sku: "LEG-BRASS",
-        orderIndex: 4,
-        inStock: true,
-        stockQuantity: 18,
-        attributeValues: {
-          style: "Round",
-          material: "Brass Plated",
-          height_cm: 18,
-          finish: "Brushed Brass",
-        },
-      },
-      {
-        categoryId: sofaLegs.id,
-        label: "Low Profile (No Legs)",
-        description:
-          "Floor-sitting design with hidden casters for easy movement",
-        price: -50.0,
-        cost: -25.0,
-        sku: "LEG-NONE",
-        orderIndex: 5,
-        inStock: true,
-        attributeValues: {
-          style: "Floor",
-          material: "N/A",
-          height_cm: 0,
-          casters: true,
-        },
-      },
-    ],
-  });
-
-  // Accessories Category
-  const sofaAccessories = await prisma.category.create({
-    data: {
-      configuratorId: sofa.id,
-      name: "Add-Ons & Accessories",
-      categoryType: "ACCESSORY",
-      description: "Enhance your sofa with optional accessories",
-      isPrimary: false,
-      isRequired: false,
-      orderIndex: 5,
-      icon: "✨",
-      minSelections: 0,
-      maxSelections: 10,
-    },
-  });
-
-  await prisma.option.createMany({
-    data: [
-      {
-        categoryId: sofaAccessories.id,
-        label: "Throw Pillows (Set of 2)",
-        description: "Matching decorative throw pillows with premium down fill",
-        price: 99.0,
-        cost: 35.0,
-        sku: "ACC-PILLOW-2",
-        orderIndex: 1,
-        inStock: true,
-        stockQuantity: 150,
-        attributeValues: {
-          quantity: 2,
-          size: "20x20",
-          fill: "Down",
-          washable: true,
-        },
-      },
-      {
-        categoryId: sofaAccessories.id,
-        label: "Throw Pillows (Set of 4)",
-        description:
-          "Four matching decorative throw pillows with premium down fill",
-        price: 179.0,
+  // RAM Options
+  const ramOptions = await Promise.all([
+    prisma.option.create({
+      data: {
+        categoryId: ramCategory.id,
+        label: "16GB DDR5 5600MHz",
+        description: "16GB (2x8GB) DDR5 - Good for gaming and multitasking",
+        price: 89.99,
         cost: 65.0,
-        sku: "ACC-PILLOW-4",
-        orderIndex: 2,
+        sku: "RAM-16G-DDR5-5600",
+        orderIndex: 1,
+        isActive: true,
+        isDefault: true,
+        isPopular: true,
         inStock: true,
         stockQuantity: 120,
         attributeValues: {
-          quantity: 4,
-          size: "20x20",
-          fill: "Down",
-          washable: true,
+          capacity: "16GB",
+          type: "DDR5",
+          speed: "5600MHz",
+          latency: "CL36",
+          modules: "2x8GB",
         },
+        imageUrl:
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=200&h=150&fit=crop",
       },
-      {
-        categoryId: sofaAccessories.id,
-        label: "Matching Ottoman",
-        description: "Coordinating storage ottoman with lift-top design",
-        price: 399.0,
-        cost: 180.0,
-        sku: "ACC-OTTOMAN",
+    }),
+    prisma.option.create({
+      data: {
+        categoryId: ramCategory.id,
+        label: "32GB DDR5 6000MHz",
+        description: "32GB (2x16GB) DDR5 - Sweet spot for gaming",
+        price: 129.99,
+        cost: 95.0,
+        sku: "RAM-32G-DDR5-6000",
+        orderIndex: 2,
+        isActive: true,
+        isDefault: false,
+        isPopular: true,
+        inStock: true,
+        stockQuantity: 85,
+        attributeValues: {
+          capacity: "32GB",
+          type: "DDR5",
+          speed: "6000MHz",
+          latency: "CL30",
+          modules: "2x16GB",
+        },
+        imageUrl:
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=200&h=150&fit=crop",
+      },
+    }),
+    prisma.option.create({
+      data: {
+        categoryId: ramCategory.id,
+        label: "64GB DDR5 6400MHz",
+        description: "64GB (2x32GB) DDR5 - For streaming and content creation",
+        price: 249.99,
+        cost: 190.0,
+        sku: "RAM-64G-DDR5-6400",
         orderIndex: 3,
-        isPopular: true,
+        isActive: true,
+        isDefault: false,
         inStock: true,
-        stockQuantity: 35,
+        stockQuantity: 45,
         attributeValues: {
-          hasStorage: true,
-          dimensions: { width: 80, depth: 80, height: 45 },
-          weight: 18.5,
+          capacity: "64GB",
+          type: "DDR5",
+          speed: "6400MHz",
+          latency: "CL32",
+          modules: "2x32GB",
         },
+        imageUrl:
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=200&h=150&fit=crop",
       },
-      {
-        categoryId: sofaAccessories.id,
-        label: "Armrest Tray Table",
-        description:
-          "Bamboo armrest tray for drinks and remotes - clips on securely",
-        price: 59.0,
-        cost: 22.0,
-        sku: "ACC-TRAY",
-        orderIndex: 4,
-        inStock: true,
-        stockQuantity: 200,
-        attributeValues: {
-          material: "Bamboo",
-          cupHolder: true,
-          removable: true,
-        },
-      },
-      {
-        categoryId: sofaAccessories.id,
-        label: "USB Charging Console",
-        description: "Built-in dual USB charging ports (2x USB-A, 1x USB-C)",
-        price: 129.0,
-        cost: 50.0,
-        sku: "ACC-USB",
-        orderIndex: 5,
-        inStock: true,
-        stockQuantity: 80,
-        attributeValues: {
-          ports: "2x USB-A + 1x USB-C",
-          powerOutput: "3.1A",
-          ledIndicator: true,
-        },
-      },
-      {
-        categoryId: sofaAccessories.id,
-        label: "5-Year Protection Plan",
-        description:
-          "Comprehensive warranty covering stains, tears, and structural damage",
-        price: 249.0,
-        cost: 75.0,
-        sku: "ACC-WARRANTY-5Y",
-        orderIndex: 6,
-        isPopular: true,
-        inStock: true,
-        attributeValues: {
-          duration: "5 years",
-          covers: ["stains", "rips", "structural", "mechanicalParts"],
-          transfers: true,
-        },
-      },
-      {
-        categoryId: sofaAccessories.id,
-        label: "Luxury Throw Blanket",
-        description: "Cashmere blend throw blanket (50x60 inches)",
-        price: 149.0,
+    }),
+    prisma.option.create({
+      data: {
+        categoryId: ramCategory.id,
+        label: "32GB DDR4 3600MHz",
+        description: "32GB (2x16GB) DDR4 - Budget friendly option",
+        price: 79.99,
         cost: 55.0,
-        sku: "ACC-BLANKET",
-        orderIndex: 7,
+        sku: "RAM-32G-DDR4-3600",
+        orderIndex: 4,
+        isActive: true,
+        isDefault: false,
         inStock: true,
         stockQuantity: 95,
         attributeValues: {
-          material: "Cashmere Blend",
-          size: "50x60",
-          washable: "Dry Clean Only",
+          capacity: "32GB",
+          type: "DDR4",
+          speed: "3600MHz",
+          latency: "CL18",
+          modules: "2x16GB",
         },
+        imageUrl:
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=200&h=150&fit=crop",
       },
-      {
-        categoryId: sofaAccessories.id,
-        label: "Professional White Glove Delivery",
-        description:
-          "Premium delivery with room placement, assembly, and packaging removal",
-        price: 199.0,
-        cost: 100.0,
-        sku: "ACC-DELIVERY",
-        orderIndex: 8,
-        inStock: true,
-        attributeValues: {
-          service: "White Glove",
-          includes: ["unboxing", "assembly", "placement", "disposal"],
-        },
-      },
-    ],
-  });
+    }),
+  ]);
 
-  // Wood Finish Category
-  const sofaFinish = await prisma.category.create({
+  // Category 4: Storage - NOT REQUIRED
+  const storageCategory = await prisma.category.create({
     data: {
-      configuratorId: sofa.id,
-      name: "Wood Finish",
-      categoryType: "FINISH",
-      description: "Select finish for wooden legs and accents",
+      configuratorId: gamingPC.id,
+      name: "Storage",
+      categoryType: CategoryType.FEATURE,
+      description: "Choose your storage solution",
+      helpText: "SSD for speed, HDD for capacity",
       isPrimary: false,
-      isRequired: true,
-      orderIndex: 6,
-      icon: "🪵",
+      isRequired: false,
+      orderIndex: 4,
+      icon: "💽",
+      imageUrl:
+        "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=800&h=400&fit=crop",
+      minSelections: 0,
+      maxSelections: 2,
+      attributesTemplate: [
+        {
+          name: "type",
+          type: "SELECT",
+          label: "Storage Type",
+          options: ["NVMe SSD", "SATA SSD", "HDD"],
+        },
+        {
+          name: "capacity",
+          type: "TEXT",
+          label: "Capacity",
+        },
+        {
+          name: "speed",
+          type: "TEXT",
+          label: "Read/Write Speed",
+        },
+      ],
     },
   });
 
-  await prisma.option.createMany({
-    data: [
-      {
-        categoryId: sofaFinish.id,
-        label: "Natural Oak",
-        description: "Light natural oak with matte protective finish",
-        price: 0,
-        sku: "FIN-OAK-NAT",
-        finishType: "Natural",
+  // Storage Options
+  const storageOptions = await Promise.all([
+    prisma.option.create({
+      data: {
+        categoryId: storageCategory.id,
+        label: "500GB NVMe SSD",
+        description: "Ultra-fast NVMe storage for OS and applications",
+        price: 59.99,
+        cost: 40.0,
+        sku: "STORAGE-NVME-500GB",
         orderIndex: 1,
+        isActive: true,
+        isDefault: true,
+        inStock: true,
+        stockQuantity: 200,
+        attributeValues: {
+          type: "NVMe SSD",
+          capacity: "500GB",
+          speed: "3500MB/s read, 2300MB/s write",
+          interface: "PCIe 4.0",
+        },
+        imageUrl:
+          "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=200&h=150&fit=crop",
+      },
+    }),
+    prisma.option.create({
+      data: {
+        categoryId: storageCategory.id,
+        label: "1TB NVMe SSD",
+        description: "Fast NVMe storage for games and applications",
+        price: 99.99,
+        cost: 70.0,
+        sku: "STORAGE-NVME-1TB",
+        orderIndex: 2,
+        isActive: true,
+        isDefault: false,
+        isPopular: true,
+        inStock: true,
+        stockQuantity: 150,
+        attributeValues: {
+          type: "NVMe SSD",
+          capacity: "1TB",
+          speed: "5000MB/s read, 4000MB/s write",
+          interface: "PCIe 4.0",
+        },
+        imageUrl:
+          "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=200&h=150&fit=crop",
+      },
+    }),
+    prisma.option.create({
+      data: {
+        categoryId: storageCategory.id,
+        label: "2TB NVMe SSD",
+        description: "Large capacity NVMe for extensive game library",
+        price: 169.99,
+        cost: 130.0,
+        sku: "STORAGE-NVME-2TB",
+        orderIndex: 3,
+        isActive: true,
+        isDefault: false,
+        inStock: true,
+        stockQuantity: 80,
+        attributeValues: {
+          type: "NVMe SSD",
+          capacity: "2TB",
+          speed: "5000MB/s read, 4500MB/s write",
+          interface: "PCIe 4.0",
+        },
+        imageUrl:
+          "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=200&h=150&fit=crop",
+      },
+    }),
+    prisma.option.create({
+      data: {
+        categoryId: storageCategory.id,
+        label: "4TB HDD",
+        description: "High capacity hard drive for media and backups",
+        price: 89.99,
+        cost: 60.0,
+        sku: "STORAGE-HDD-4TB",
+        orderIndex: 4,
+        isActive: true,
+        isDefault: false,
+        inStock: true,
+        stockQuantity: 100,
+        attributeValues: {
+          type: "HDD",
+          capacity: "4TB",
+          speed: "180MB/s",
+          rpm: 7200,
+        },
+        imageUrl:
+          "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=200&h=150&fit=crop",
+      },
+    }),
+  ]);
+
+  // Category 5: Cooling Solution - NOT REQUIRED
+  const coolingCategory = await prisma.category.create({
+    data: {
+      configuratorId: gamingPC.id,
+      name: "CPU Cooling",
+      categoryType: CategoryType.ACCESSORY,
+      description: "Upgrade your CPU cooling for better performance",
+      helpText:
+        "Liquid cooling provides better temperatures and quieter operation",
+      isPrimary: false,
+      isRequired: false,
+      orderIndex: 5,
+      icon: "❄️",
+      imageUrl:
+        "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=800&h=400&fit=crop",
+      minSelections: 0,
+      maxSelections: 1,
+      attributesTemplate: [
+        {
+          name: "type",
+          type: "SELECT",
+          label: "Cooling Type",
+          options: ["Air", "Liquid"],
+        },
+        {
+          name: "noiseLevel",
+          type: "SELECT",
+          label: "Noise Level",
+          options: ["Low", "Medium", "High"],
+        },
+        {
+          name: "tdpRating",
+          type: "NUMBER",
+          label: "Max TDP Support",
+        },
+      ],
+    },
+  });
+
+  // Cooling Options
+  const coolingOptions = await Promise.all([
+    prisma.option.create({
+      data: {
+        categoryId: coolingCategory.id,
+        label: "Stock Air Cooler (Included)",
+        description:
+          "Basic air cooler included with CPU - adequate for most uses",
+        price: 0,
+        sku: "COOLER-AIR-BASIC",
+        orderIndex: 1,
+        isActive: true,
         isDefault: true,
         inStock: true,
         attributeValues: {
-          wood: "Oak",
-          tone: "Light",
-          sheen: "Matte",
-          durability: "High",
+          type: "Air",
+          noiseLevel: "Medium",
+          tdpRating: 95,
+          rgb: false,
         },
+        imageUrl:
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=200&h=150&fit=crop",
       },
-      {
-        categoryId: sofaFinish.id,
-        label: "Walnut Stain",
-        description: "Rich dark walnut with satin finish",
-        price: 85.0,
-        cost: 40.0,
-        sku: "FIN-WALNUT",
-        finishType: "Stained",
+    }),
+    prisma.option.create({
+      data: {
+        categoryId: coolingCategory.id,
+        label: "Premium Air Cooler",
+        description: "High-performance air cooler with dual towers",
+        price: 89.99,
+        cost: 60.0,
+        sku: "COOLER-AIR-PREMIUM",
         orderIndex: 2,
+        isActive: true,
+        isDefault: false,
         isPopular: true,
         inStock: true,
+        stockQuantity: 65,
         attributeValues: {
-          wood: "Oak",
-          tone: "Dark",
-          sheen: "Satin",
-          durability: "High",
+          type: "Air",
+          noiseLevel: "Low",
+          tdpRating: 250,
+          rgb: true,
+          height: 160,
         },
+        imageUrl:
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=200&h=150&fit=crop",
       },
-      {
-        categoryId: sofaFinish.id,
-        label: "Espresso",
-        description: "Deep espresso brown with satin finish",
-        price: 75.0,
-        cost: 35.0,
-        sku: "FIN-ESPRESSO",
-        finishType: "Stained",
+    }),
+    prisma.option.create({
+      data: {
+        categoryId: coolingCategory.id,
+        label: "240mm Liquid Cooler",
+        description: "All-in-one liquid cooler with RGB lighting",
+        price: 129.99,
+        cost: 95.0,
+        sku: "COOLER-LIQUID-240",
         orderIndex: 3,
+        isActive: true,
+        isDefault: false,
+        isPopular: true,
         inStock: true,
+        stockQuantity: 42,
         attributeValues: {
-          wood: "Oak",
-          tone: "Very Dark",
-          sheen: "Satin",
-          durability: "High",
+          type: "Liquid",
+          radiatorSize: "240mm",
+          noiseLevel: "Low",
+          tdpRating: 300,
+          rgb: true,
         },
+        imageUrl:
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=200&h=150&fit=crop",
+        gallery: [
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=600&h=400&fit=crop",
+          "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=600&h=400&fit=crop",
+        ],
       },
-      {
-        categoryId: sofaFinish.id,
-        label: "White Wash",
-        description: "Contemporary whitewashed oak with matte finish",
-        price: 75.0,
-        cost: 35.0,
-        sku: "FIN-WHITEWASH",
-        finishType: "Painted",
+    }),
+    prisma.option.create({
+      data: {
+        categoryId: coolingCategory.id,
+        label: "360mm Liquid Cooler",
+        description: "Premium liquid cooling with large radiator",
+        price: 179.99,
+        cost: 140.0,
+        sku: "COOLER-LIQUID-360",
         orderIndex: 4,
+        isActive: true,
+        isDefault: false,
         inStock: true,
+        stockQuantity: 28,
         attributeValues: {
-          wood: "Oak",
-          tone: "White",
-          sheen: "Matte",
-          durability: "Good",
+          type: "Liquid",
+          radiatorSize: "360mm",
+          noiseLevel: "Low",
+          tdpRating: 400,
+          rgb: true,
         },
+        imageUrl:
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=400&h=300&fit=crop",
+        thumbnailUrl:
+          "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=200&h=150&fit=crop",
       },
+    }),
+  ]);
+
+  console.log(
+    "✅ Created Gaming PC configurator with 5 categories and 21 options"
+  );
+
+  // ========================================
+  // CREATE INCOMPATIBILITIES
+  // ========================================
+
+  // Get option IDs for creating incompatibilities
+  const intelI9 = cpuOptions[2].id; // Intel i9-14900K
+  const amdRyzen7 = cpuOptions[1].id; // AMD Ryzen 7 7800X3D
+  const rtx4090 = gpuOptions[4].id; // RTX 4090
+  const rx7900xtx = gpuOptions[3].id; // RX 7900 XTX
+  const ram64gb = ramOptions[2].id; // 64GB DDR5
+  const basicCooler = coolingOptions[0].id; // Stock Air Cooler
+  const premiumAirCooler = coolingOptions[1].id; // Premium Air Cooler
+  const liquid360 = coolingOptions[3].id; // 360mm Liquid Cooler
+  const hdd4tb = storageOptions[3].id; // 4TB HDD
+
+  // Create incompatibilities
+  await prisma.optionIncompatibility.createMany({
+    data: [
+      // Intel i9 incompatible with basic cooler
       {
-        categoryId: sofaFinish.id,
-        label: "Honey Maple",
-        description: "Warm honey-toned maple with satin finish",
-        price: 75.0,
-        cost: 35.0,
-        sku: "FIN-MAPLE",
-        finishType: "Stained",
-        orderIndex: 5,
-        inStock: true,
-        attributeValues: {
-          wood: "Maple",
-          tone: "Medium",
-          sheen: "Satin",
-          durability: "High",
-        },
+        optionId: intelI9,
+        incompatibleOptionId: basicCooler,
+        severity: "error",
+        message: "Intel Core i9 requires better cooling than the stock cooler",
+      },
+      // AMD Ryzen 7 incompatible with 360mm liquid cooler (socket compatibility)
+      {
+        optionId: amdRyzen7,
+        incompatibleOptionId: liquid360,
+        severity: "warning",
+        message:
+          "This liquid cooler may require additional mounting hardware for AM5 socket",
+      },
+      // RTX 4090 incompatible with 4TB HDD (space constraints)
+      {
+        optionId: rtx4090,
+        incompatibleOptionId: hdd4tb,
+        severity: "warning",
+        message: "Large GPU may interfere with HDD mounting locations",
+      },
+      // RX 7900 XTX incompatible with 4TB HDD (space constraints)
+      {
+        optionId: rx7900xtx,
+        incompatibleOptionId: hdd4tb,
+        severity: "warning",
+        message: "Large GPU may interfere with HDD mounting locations",
+      },
+      // 64GB RAM incompatible with premium air cooler (height clearance)
+      {
+        optionId: ram64gb,
+        incompatibleOptionId: premiumAirCooler,
+        severity: "error",
+        message: "Tall RAM modules may not fit under this large air cooler",
       },
     ],
   });
 
-  console.log("✅ Created Sofa configurator with 6 categories and 54 options");
+  console.log("✅ Created 5 option incompatibilities");
 
   // ========================================
   // CREATE EMAIL TEMPLATES
@@ -1261,63 +1011,43 @@ async function main() {
   await prisma.emailTemplate.createMany({
     data: [
       {
-        clientId: client1.id,
-        name: "Quote Confirmation",
-        subject: "Your Custom Furniture Quote - {{quoteCode}}",
-        body: `
-          <h1>Thank you for your interest!</h1>
-          <p>Hi {{customerName}},</p>
-          <p>Thank you for configuring your custom furniture with us. Here are the details:</p>
-          <h2>Configuration Summary</h2>
-          {{configurationDetails}}
-          <h2>Total Price: {{totalPrice}}</h2>
-          <p>This quote is valid for 30 days. To proceed with your order, please reply to this email or call us at +1-555-0101.</p>
-        `,
-        previewText: "Your custom furniture quote is ready",
+        clientId: client.id,
+        name: "PC Quote Confirmation",
+        subject: "Your Custom Gaming PC Quote - {{quoteCode}}",
+        body: `<h1>Your Dream Gaming PC Awaits!</h1>
+<p>Hi {{customerName}},</p>
+<p>Thank you for building your custom gaming PC with us. Here's your configuration:</p>
+<h2>PC Configuration Summary</h2>
+{{configurationDetails}}
+<h2>Total Price: {{totalPrice}}</h2>
+<p>This quote is valid for 14 days. Our team will review your configuration for compatibility and contact you within 24 hours.</p>
+<p>Ready to order? Reply to this email or call us at +1-555-0100.</p>`,
+        previewText: "Your custom gaming PC quote is ready",
         templateType: "quote",
         isDefault: true,
         isActive: true,
         inheritThemeColors: true,
       },
       {
-        clientId: client1.id,
+        clientId: client.id,
         name: "Order Confirmation",
-        subject: "Order Confirmed - {{orderNumber}}",
-        body: `
-          <h1>Order Confirmed!</h1>
-          <p>Hi {{customerName}},</p>
-          <p>Great news! Your order has been confirmed and is being prepared.</p>
-          <h2>Order Details</h2>
-          {{orderDetails}}
-          <p>Estimated delivery: {{deliveryDate}}</p>
-        `,
+        subject: "Gaming PC Order Confirmed - {{orderNumber}}",
+        body: `<h1>Order Confirmed - Let the Gaming Begin!</h1>
+<p>Hi {{customerName}},</p>
+<p>Great news! Your custom gaming PC order has been confirmed and our build team is getting started.</p>
+<h2>Order Details</h2>
+{{orderDetails}}
+<p>Estimated build time: 3-5 business days</p>
+<p>We'll send you updates throughout the build process.</p>`,
         templateType: "order",
         isDefault: false,
-        isActive: true,
-        inheritThemeColors: true,
-      },
-      {
-        clientId: client2.id,
-        name: "Manufacturing Quote",
-        subject: "Industrial Service Quote - {{quoteCode}}",
-        body: `
-          <h1>Your Custom Manufacturing Quote</h1>
-          <p>Hello {{customerName}},</p>
-          <p>Thank you for your inquiry. Please find your detailed quote below:</p>
-          {{configurationDetails}}
-          <p><strong>Total: {{totalPrice}}</strong></p>
-          <p>Lead time: {{leadTime}} business days</p>
-          <p>Quote valid for 14 days.</p>
-        `,
-        templateType: "quote",
-        isDefault: true,
         isActive: true,
         inheritThemeColors: true,
       },
     ],
   });
 
-  console.log("✅ Created 3 email templates");
+  console.log("✅ Created 2 email templates");
 
   // ========================================
   // CREATE SAMPLE QUOTES
@@ -1326,219 +1056,137 @@ async function main() {
   await prisma.quote.createMany({
     data: [
       {
-        clientId: client1.id,
-        configuratorId: sofa.id,
-        customerEmail: "john.customer@email.com",
-        customerName: "John Customer",
+        clientId: client.id,
+        configuratorId: gamingPC.id,
+        customerEmail: "gamer.john@email.com",
+        customerName: "John Smith",
         customerPhone: "+1-555-1001",
-        title: "Custom Navy Blue Velvet Sofa",
+        title: "Mid-Range Gaming PC Build",
         selectedOptions: {
-          size: "Standard (3-Seater)",
-          color: "Navy Blue",
-          material: "Soft Velvet",
-          legs: "Brass Finished Legs",
-          accessories: ["Throw Pillows (Set of 4)", "5-Year Protection Plan"],
-          finish: "Walnut Stain",
+          processor: "AMD Ryzen 7 7800X3D",
+          graphicsCard: "AMD RX 7700 XT 12GB",
+          memory: "32GB DDR5 6000MHz",
+          storage: ["1TB NVMe SSD"],
+          cooling: "240mm Liquid Cooler",
         },
-        totalPrice: 2228.0,
-        subtotal: 2228.0,
-        status: "PENDING",
+        totalPrice: 1429.95,
+        subtotal: 1429.95,
+        status: QuoteStatus.PENDING,
+        quoteCode: "QT-GAMING-001",
         customerNotes:
-          "Would like to see fabric samples before ordering. Delivery needed by end of month.",
+          "Looking for a solid 1440p gaming setup. Please confirm compatibility.",
         createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
       },
       {
-        clientId: client1.id,
-        configuratorId: sofa.id,
-        customerEmail: "sarah.home@email.com",
-        customerName: "Sarah Martinez",
+        clientId: client.id,
+        configuratorId: gamingPC.id,
+        customerEmail: "pro.streamer@email.com",
+        customerName: "Sarah Johnson",
         customerPhone: "+1-555-1002",
-        customerCompany: "Martinez Interiors",
-        title: "Loveseat in Performance Fabric",
+        customerCompany: "StreamPro Gaming",
+        title: "High-End Streaming PC",
         selectedOptions: {
-          size: "Loveseat (2-Seater)",
-          color: "Cloud Gray",
-          material: "Performance Fabric",
-          legs: "Matte Black Metal",
-          accessories: ["Throw Pillows (Set of 2)", "Matching Ottoman"],
-          finish: "Natural Oak",
+          processor: "Intel Core i9-14900K",
+          graphicsCard: "NVIDIA RTX 4090 24GB",
+          memory: "64GB DDR5 6400MHz",
+          storage: ["2TB NVMe SSD", "4TB HDD"],
+          cooling: "360mm Liquid Cooler",
         },
-        totalPrice: 1622.0,
-        subtotal: 1622.0,
-        status: "SENT",
+        totalPrice: 3229.95,
+        subtotal: 3229.95,
+        status: QuoteStatus.SENT,
+        quoteCode: "QT-GAMING-002",
         emailSentAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
         openCount: 3,
         lastOpenedAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
         customerNotes:
-          "Interior designer - ordering for client. Need confirmation on lead times.",
-        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+          "Need this for professional streaming. Must handle 4K encoding smoothly.",
+        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
       },
       {
-        clientId: client1.id,
-        configuratorId: sofa.id,
-        customerEmail: "michael.buyer@email.com",
-        customerName: "Michael Thompson",
-        title: "Grand Leather Sofa Configuration",
+        clientId: client.id,
+        configuratorId: gamingPC.id,
+        customerEmail: "budget.gamer@email.com",
+        customerName: "Mike Chen",
+        title: "Budget Gaming Build",
         selectedOptions: {
-          size: "Grand (4-Seater)",
-          color: "Charcoal Black",
-          material: "Genuine Leather",
-          legs: "Tapered Wood Legs",
-          accessories: [
-            "Professional White Glove Delivery",
-            "5-Year Protection Plan",
-          ],
-          finish: "Espresso",
+          processor: "AMD Ryzen 5 7600X",
+          graphicsCard: "NVIDIA RTX 4060 8GB",
+          memory: "16GB DDR5 5600MHz",
+          storage: ["500GB NVMe SSD"],
+          cooling: "Stock Air Cooler (Included)",
         },
-        totalPrice: 3322.0,
-        subtotal: 3322.0,
-        status: "ACCEPTED",
-        emailSentAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-        openCount: 5,
-        lastOpenedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
-        customerNotes: "Ready to order. Please send payment instructions.",
-        adminNotes: "High-value customer. Priority processing.",
-        createdAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
-      },
-      {
-        clientId: client2.id,
-        configuratorId: waterjet.id,
-        customerEmail: "engineer@techcorp.com",
-        customerName: "David Chen",
-        customerPhone: "+1-555-2001",
-        customerCompany: "Tech Corp Manufacturing",
-        title: "Aluminum Brackets - Water Jet Cutting",
-        selectedOptions: {
-          material: "Aluminum 6061",
-          thickness: "1/4 inch (6mm)",
-          precision: "High (±0.05mm)",
-          finish: "Deburred",
-          services: ["CAD File Conversion", "Quality Inspection Report"],
-        },
-        totalPrice: 395.0,
-        subtotal: 395.0,
-        status: "PENDING",
-        customerNotes:
-          "Need 50 pieces. Will upload DXF files after quote approval. Rush if possible.",
-        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-      },
-      {
-        clientId: client2.id,
-        configuratorId: waterjet.id,
-        customerEmail: "procurement@aerospace.com",
-        customerName: "Jennifer Lee",
-        customerPhone: "+1-555-2002",
-        customerCompany: "Aerospace Dynamics Ltd",
-        title: "Titanium Precision Parts",
-        selectedOptions: {
-          material: "Titanium Grade 5",
-          thickness: "1/2 inch (12mm)",
-          precision: "Ultra (±0.025mm)",
-          finish: "Polished",
-          services: ["Quality Inspection Report", "Custom Packaging"],
-        },
-        totalPrice: 1105.0,
-        subtotal: 1105.0,
-        status: "SENT",
-        emailSentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+        totalPrice: 809.96,
+        subtotal: 809.96,
+        status: QuoteStatus.ACCEPTED,
+        quoteCode: "QT-GAMING-003",
+        emailSentAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
         openCount: 2,
-        lastOpenedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-        customerNotes: "Aerospace grade required. AS9100 certification needed.",
-        adminNotes:
-          "Requires special certification. Quality manager to review.",
-        createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
-      },
-      {
-        clientId: client1.id,
-        configuratorId: desk.id,
-        customerEmail: "office.manager@corp.com",
-        customerName: "Patricia Wilson",
-        customerCompany: "Wilson & Associates",
-        title: "Executive Desk Configuration",
-        selectedOptions: {
-          size: "72 inch Wide",
-          material: "Walnut",
-          drawers: "File Cabinet (3 drawer)",
-          features: [
-            "Cable Management",
-            "USB Charging Ports",
-            "Leather Desk Pad",
-          ],
-          finish: "Satin",
-        },
-        totalPrice: 2499.0,
-        subtotal: 2499.0,
-        status: "EXPIRED",
-        emailSentAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
-        validUntil: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-        expiresAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-        openCount: 1,
-        customerNotes: "Need to check with CEO before ordering.",
-        createdAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
+        lastOpenedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+        customerNotes: "First gaming PC build. Excited to get started!",
+        adminNotes: "Customer confirmed order. Ready for build.",
+        createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
       },
     ],
   });
 
-  console.log("✅ Created 6 sample quotes");
+  console.log("✅ Created 3 sample quotes");
 
   // ========================================
   // CREATE ANALYTICS EVENTS
   // ========================================
 
   const sessionIds = [
-    "sess_abc123",
-    "sess_def456",
-    "sess_ghi789",
-    "sess_jkl012",
-    "sess_mno345",
+    "sess_pc_builder_001",
+    "sess_pc_builder_002",
+    "sess_pc_builder_003",
+    "sess_pc_builder_004",
   ];
 
   const events = [];
   const now = Date.now();
 
-  // Generate 100+ analytics events
-  for (let i = 0; i < 120; i++) {
-    const daysAgo = Math.floor(Math.random() * 30);
-    const randomClient = clients[Math.floor(Math.random() * 2)]; // Client 1 or 2
-    const randomConfig =
-      configurators[Math.floor(Math.random() * configurators.length)];
+  // Generate 50 analytics events for the gaming PC configurator
+  for (let i = 0; i < 50; i++) {
+    const daysAgo = Math.floor(Math.random() * 14);
     const randomSession =
       sessionIds[Math.floor(Math.random() * sessionIds.length)];
 
     events.push({
-      clientId: randomClient.id,
-      configuratorId: randomConfig.id,
+      clientId: client.id,
+      configuratorId: gamingPC.id,
       eventType: [
-        "CONFIGURATOR_VIEW",
-        "CONFIGURATOR_INTERACTION",
-        "QUOTE_REQUEST",
+        AnalyticsEventType.CONFIGURATOR_VIEW,
+        AnalyticsEventType.CONFIGURATOR_INTERACTION,
+        AnalyticsEventType.QUOTE_REQUEST,
       ][Math.floor(Math.random() * 3)],
       eventName: [
         "page_view",
         "option_selected",
         "category_changed",
+        "price_updated",
         "quote_submitted",
-      ][Math.floor(Math.random() * 4)],
+      ][Math.floor(Math.random() * 5)],
       sessionId: randomSession,
       userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       ipAddress: `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-      country: ["US", "CA", "GB", "DE", "FR"][Math.floor(Math.random() * 5)],
-      region: ["California", "Ontario", "London", "Bavaria", "Île-de-France"][
+      country: ["US", "CA", "GB", "DE", "AU"][Math.floor(Math.random() * 5)],
+      region: ["California", "Ontario", "London", "Bavaria", "New South Wales"][
         Math.floor(Math.random() * 5)
       ],
-      city: ["Los Angeles", "Toronto", "London", "Munich", "Paris"][
+      city: ["Los Angeles", "Toronto", "London", "Munich", "Sydney"][
         Math.floor(Math.random() * 5)
       ],
-      path: `/configurator/${randomConfig.slug}`,
+      path: `/configurator/${gamingPC.slug}`,
       referrer: [
         "https://google.com",
-        "https://facebook.com",
+        "https://youtube.com",
         "direct",
-        "https://instagram.com",
+        "https://reddit.com",
       ][Math.floor(Math.random() * 4)],
-      domain: randomClient.domain || "localhost",
+      domain: client.domain,
       metadata: {
-        device: "desktop",
+        device: ["desktop", "mobile", "tablet"][Math.floor(Math.random() * 3)],
         browser: "Chrome",
         viewportWidth: 1920,
         viewportHeight: 1080,
@@ -1549,167 +1197,180 @@ async function main() {
 
   await prisma.analyticsEvent.createMany({ data: events });
 
-  console.log("✅ Created 120 analytics events");
+  console.log("✅ Created 50 analytics events");
 
   // ========================================
-  // CREATE FILES
+  // CREATE FILES WITH REAL URLS
   // ========================================
 
   await prisma.file.createMany({
     data: [
       {
-        clientId: client1.id,
-        filename: "sofa-hero-image.jpg",
-        originalName: "custom-sofa-main.jpg",
-        fileType: "IMAGE",
+        clientId: client.id,
+        filename: "gaming-pc-hero.jpg",
+        originalName: "custom-gaming-pc-main.jpg",
+        fileType: FileType.IMAGE,
         mimeType: "image/jpeg",
         size: 2458000,
-        key: "uploads/client1/sofa-hero.jpg",
-        url: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc",
-        altText: "Luxury custom sofa in modern living room",
-        caption: "Hero image for sofa configurator",
+        key: "uploads/tech-solutions/gaming-pc-hero.jpg",
+        url: "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=1920&h=1080&fit=crop",
+        altText: "Custom gaming PC with RGB lighting on a modern desk",
+        caption: "Hero image for gaming PC configurator",
         isPublic: true,
         metadata: { width: 1920, height: 1080, format: "JPEG" },
       },
       {
-        clientId: client1.id,
-        filename: "fabric-swatch-guide.pdf",
-        originalName: "Fabric Swatches 2024.pdf",
-        fileType: "DOCUMENT",
+        clientId: client.id,
+        filename: "pc-build-showcase.jpg",
+        originalName: "gaming-pc-showcase.jpg",
+        fileType: FileType.IMAGE,
+        mimeType: "image/jpeg",
+        size: 1890000,
+        key: "uploads/tech-solutions/pc-showcase.jpg",
+        url: "https://images.unsplash.com/photo-1562976540-1502c2145186?w=1200&h=800&fit=crop",
+        altText: "High-end gaming PC with liquid cooling and RGB lighting",
+        caption: "Premium gaming PC showcase",
+        isPublic: true,
+        metadata: { width: 1200, height: 800, format: "JPEG" },
+      },
+      {
+        clientId: client.id,
+        filename: "build-process-guide.pdf",
+        originalName: "PC Build Process Guide.pdf",
+        fileType: FileType.DOCUMENT,
         mimeType: "application/pdf",
         size: 1250000,
-        key: "uploads/client1/fabric-guide.pdf",
-        url: "https://example.com/fabric-guide.pdf",
-        caption: "Complete fabric swatch guide",
-        isPublic: false,
-        metadata: { pages: 12 },
-      },
-      {
-        clientId: client2.id,
-        filename: "waterjet-capabilities.pdf",
-        originalName: "Water Jet Cutting Capabilities.pdf",
-        fileType: "DOCUMENT",
-        mimeType: "application/pdf",
-        size: 3400000,
-        key: "uploads/client2/capabilities.pdf",
-        url: "https://example.com/waterjet-capabilities.pdf",
-        caption: "Technical capabilities document",
+        key: "uploads/tech-solutions/build-guide.pdf",
+        url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        caption: "Step-by-step PC building process",
         isPublic: true,
-        metadata: { pages: 24 },
+        metadata: { pages: 8, fileType: "PDF Guide" },
       },
       {
-        clientId: client1.id,
-        filename: "desk-assembly-instructions.pdf",
-        originalName: "Executive Desk Assembly.pdf",
-        fileType: "DOCUMENT",
+        clientId: client.id,
+        filename: "warranty-terms.pdf",
+        originalName: "Warranty Terms and Conditions.pdf",
+        fileType: FileType.DOCUMENT,
         mimeType: "application/pdf",
         size: 890000,
-        key: "uploads/client1/desk-assembly.pdf",
-        url: "https://example.com/desk-assembly.pdf",
+        key: "uploads/tech-solutions/warranty.pdf",
+        url: "https://www.africau.edu/images/default/sample.pdf",
+        altText: "Warranty terms and conditions document",
         isPublic: false,
-        metadata: { pages: 8 },
+        metadata: { pages: 6, documentType: "Legal" },
       },
       {
-        clientId: client2.id,
-        filename: "cnc-sample-parts.zip",
-        originalName: "Sample CNC Parts.zip",
-        fileType: "ASSET",
-        mimeType: "application/zip",
+        clientId: client.id,
+        filename: "component-compatibility.jpg",
+        originalName: "compatibility-chart.jpg",
+        fileType: FileType.IMAGE,
+        mimeType: "image/jpeg",
+        size: 1560000,
+        key: "uploads/tech-solutions/compatibility.jpg",
+        url: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=1000&h=800&fit=crop",
+        altText: "PC component compatibility chart",
+        caption: "Component compatibility reference guide",
+        isPublic: true,
+        metadata: { width: 1000, height: 800, format: "JPEG" },
+      },
+      {
+        clientId: client.id,
+        filename: "rgb-lighting-demo.mp4",
+        originalName: "RGB Lighting Demo.mp4",
+        fileType: FileType.ASSET,
+        mimeType: "video/mp4",
         size: 15600000,
-        key: "uploads/client2/cnc-samples.zip",
-        url: "https://example.com/cnc-samples.zip",
-        isPublic: false,
-        metadata: { files: 24, totalSize: 15600000 },
+        key: "uploads/tech-solutions/rgb-demo.mp4",
+        url: "https://assets.mixkit.co/videos/preview/mixkit-pc-with-led-lights-while-running-44427-large.mp4",
+        altText: "RGB lighting demonstration video",
+        caption: "Custom RGB lighting effects showcase",
+        isPublic: true,
+        metadata: {
+          duration: "30s",
+          resolution: "1080p",
+          fileType: "Video Demo",
+        },
       },
     ],
   });
 
-  console.log("✅ Created 5 file uploads");
+  console.log("✅ Created 6 file uploads with real URLs");
 
   // ========================================
   // CREATE API LOGS
   // ========================================
 
   const apiLogs = [];
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 25; i++) {
     const daysAgo = Math.floor(Math.random() * 7);
-    const randomClient = clients[Math.floor(Math.random() * 3)];
-    const methods = ["GET", "POST", "PUT", "DELETE"];
+    const methods = ["GET", "POST", "PUT"];
     const paths = [
-      "/api/configurator/list",
+      "/api/configurator/gaming-pc",
       "/api/quote/create",
-      "/api/option/update",
-      "/api/theme/list",
+      "/api/option/list",
+      "/api/analytics/events",
     ];
-    const statuses = [200, 200, 200, 201, 400, 404, 500];
+    const statuses = [200, 200, 200, 201, 400, 404];
 
     apiLogs.push({
-      clientId: randomClient.id,
+      clientId: client.id,
       method: methods[Math.floor(Math.random() * methods.length)],
       path: paths[Math.floor(Math.random() * paths.length)],
       statusCode: statuses[Math.floor(Math.random() * statuses.length)],
       userAgent: "Mozilla/5.0",
       ipAddress: `10.0.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-      responseTime: Math.floor(Math.random() * 500) + 50,
-      requestSize: Math.floor(Math.random() * 10000),
-      responseSize: Math.floor(Math.random() * 50000),
-      apiKeyId: randomClient.apiKey,
+      responseTime: Math.floor(Math.random() * 300) + 50,
+      requestSize: Math.floor(Math.random() * 5000),
+      responseSize: Math.floor(Math.random() * 25000),
+      apiKeyId: client.apiKey,
       createdAt: new Date(now - daysAgo * 24 * 60 * 60 * 1000),
     });
   }
 
   await prisma.apiLog.createMany({ data: apiLogs });
 
-  console.log("✅ Created 50 API logs");
+  console.log("✅ Created 25 API logs");
 
   // ========================================
   // FINAL SUMMARY
   // ========================================
 
-  console.log("\n🎉 COMPREHENSIVE SEED COMPLETED! 🎉\n");
-  console.log("=".repeat(60));
+  console.log("\n🎉 SEED COMPLETED WITH REAL FILE URLs! 🎉\n");
+  console.log("=".repeat(50));
   console.log("📊 DATABASE SUMMARY:");
-  console.log("=".repeat(60));
-  console.log(`✅ Clients: 5 (with various subscription statuses)`);
+  console.log("=".repeat(50));
+  console.log(`✅ Client: 1 (Tech Solutions Inc.)`);
+  console.log(`   - tech.solutions@example.com - password123`);
+  console.log(`\n✅ Configurator: 1 (Custom Gaming PC Builder)`);
+  console.log(`\n✅ Categories: 5`);
+  console.log(`   1. Processor (CPU) - REQUIRED - 4 options`);
+  console.log(`   2. Graphics Card (GPU) - REQUIRED - 5 options`);
+  console.log(`   3. Memory (RAM) - REQUIRED - 4 options`);
+  console.log(`   4. Storage - OPTIONAL - 4 options`);
+  console.log(`   5. CPU Cooling - OPTIONAL - 4 options`);
+  console.log(`\n✅ Total Options: 21 with realistic pricing`);
+  console.log(`\n✅ Incompatibilities: 5 cross-category relationships`);
+  console.log(`\n✅ Real File URLs:`);
+  console.log(`   - 6 files with real Unsplash images and sample PDFs`);
+  console.log(`   - Multiple image sizes (thumbnails, galleries)`);
+  console.log(`   - Sample video file for demonstrations`);
+  console.log(`\n✅ Additional Data:`);
+  console.log(`   - Email Templates: 2`);
+  console.log(`   - Sample Quotes: 3`);
+  console.log(`   - Analytics Events: 50`);
+  console.log(`   - API Logs: 25`);
+  console.log("=".repeat(50));
+  console.log("\n🚀 Ready to test! Login with: tech.solutions@example.com");
+  console.log("🖼️ All images and files now use real URLs from Unsplash");
   console.log(
-    `   - john.furniture@example.com (ACTIVE - MONTHLY) - password123`
-  );
-  console.log(
-    `   - sarah.industrial@example.com (ACTIVE - YEARLY) - password456`
-  );
-  console.log(`   - mike.newbie@example.com (INACTIVE) - password789`);
-  console.log(`   - lisa.pastdue@example.com (PAST_DUE) - password321`);
-  console.log(`   - tom.canceled@example.com (CANCELED) - password654`);
-  console.log(`\n✅ Users: 3 (linked to Clients for Next-Auth)`);
-  console.log(`\n✅ Themes: 4`);
-  console.log(
-    `   - Modern Light, Dark Professional, Industrial Gray, Vibrant Creative`
-  );
-  console.log(`\n✅ Configurators: 6`);
-  console.log(`   1. Custom Sofa Designer (54 options across 6 categories)`);
-  console.log(`   2. Executive Desk Builder`);
-  console.log(`   3. Industrial Water Jet Cutting`);
-  console.log(`   4. CNC Machining Quote Calculator`);
-  console.log(`   5. Kitchen Cabinet Designer (draft)`);
-  console.log(`   6. Custom T-Shirt Designer`);
-  console.log(`\n✅ Categories: 6+ with detailed options`);
-  console.log(`✅ Options: 54+ with rich attribute data`);
-  console.log(`✅ Email Templates: 3`);
-  console.log(`✅ Quotes: 6 (various statuses)`);
-  console.log(`✅ Analytics Events: 120`);
-  console.log(`✅ Files: 5`);
-  console.log(`✅ API Logs: 50`);
-  console.log("=".repeat(60));
-  console.log("\n🚀 Ready to test! Login with any of the emails above.");
-  console.log(
-    "🎨 Explore configurators, create quotes, and test all features!"
+    "🔧 Test the gaming PC configurator with real component incompatibilities!"
   );
   console.log("\n");
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Error during comprehensive seed:", e);
+    console.error("❌ Error during seed:", e);
     process.exit(1);
   })
   .finally(async () => {

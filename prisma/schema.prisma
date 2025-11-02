@@ -174,7 +174,7 @@ model Configurator {
 
   // Status & Visibility
   isActive    Boolean   @default(true)
-  isPublished Boolean   @default(false)
+  isPublished Boolean   @default(true)
   publishedAt DateTime?
 
   // Configuration Settings

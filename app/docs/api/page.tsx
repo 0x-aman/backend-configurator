@@ -270,15 +270,22 @@ const API_DOCS: ApiEndpoint[] = [
     method: "DELETE",
     path: "/api/configurator/delete",
     description:
-      "Permanently deletes a configurator and all associated categories, options, and quotes. This action cannot be undone.",
+      "Permanently deletes a configurator and all associated categories, options, and quotes. This action cannot be undone. Requires a valid edit token.",
     category: "Configurator",
-    requiresAuth: true,
+    requiresAuth: false,
+    requiresEditToken: true,
     queryParams: [
       {
         name: "id",
         type: "string",
         required: true,
         description: "The configurator ID to delete",
+      },
+      {
+        name: "token",
+        type: "string",
+        required: true,
+        description: "Valid edit token",
       },
     ],
     responseExample: {
@@ -287,7 +294,8 @@ const API_DOCS: ApiEndpoint[] = [
       data: null,
     },
     notes: [
-      "Pass configurator ID as query parameter: ?id=clxxx123",
+      "Pass configurator ID and token as query parameters: ?id=clxxx123&token=...",
+      "The 'token' field is required and must be a valid edit token",
       "Cascading delete removes all related data",
       "Verifies ownership before deletion",
     ],
@@ -395,10 +403,12 @@ const API_DOCS: ApiEndpoint[] = [
     method: "POST",
     path: "/api/category/create",
     description:
-      "Creates a new category within a configurator. This is the second step after creating a configurator.",
+      "Creates a new category within a configurator. This is the second step after creating a configurator. Requires a valid edit token.",
     category: "Category",
-    requiresAuth: true,
+    requiresAuth: false,
+    requiresEditToken: true,
     requestBody: {
+      token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
       configuratorId: "clxxx123",
       name: "Power Rating",
       categoryType: "POWER",
@@ -423,6 +433,8 @@ const API_DOCS: ApiEndpoint[] = [
       },
     },
     notes: [
+      "The 'token' field is required and must be a valid edit token",
+      "Edit tokens expire after 30 minutes",
       "configuratorId and name are required",
       "categoryType options: GENERIC, COLOR, DIMENSION, MATERIAL, FEATURE, ACCESSORY, POWER, TEXT, FINISH, CUSTOM",
       "orderIndex determines display order in frontend",
@@ -434,10 +446,13 @@ const API_DOCS: ApiEndpoint[] = [
     name: "Update Category",
     method: "PUT",
     path: "/api/category/update",
-    description: "Updates an existing category's properties.",
+    description:
+      "Updates an existing category's properties. Requires a valid edit token.",
     category: "Category",
-    requiresAuth: true,
+    requiresAuth: false,
+    requiresEditToken: true,
     requestBody: {
+      token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
       id: "cat_1",
       name: "Updated Category Name",
       description: "Updated description",
@@ -456,8 +471,43 @@ const API_DOCS: ApiEndpoint[] = [
       },
     },
     notes: [
+      "The 'token' field is required and must be a valid edit token",
       "Only include fields you want to update",
       "Verifies ownership through configurator relationship",
+    ],
+  },
+  {
+    name: "Delete Category",
+    method: "DELETE",
+    path: "/api/category/update",
+    description:
+      "Deletes a category and all associated options. Requires a valid edit token.",
+    category: "Category",
+    requiresAuth: false,
+    requiresEditToken: true,
+    queryParams: [
+      {
+        name: "id",
+        type: "string",
+        required: true,
+        description: "The category ID to delete",
+      },
+      {
+        name: "token",
+        type: "string",
+        required: true,
+        description: "Valid edit token",
+      },
+    ],
+    responseExample: {
+      success: true,
+      message: "Category deleted",
+      data: null,
+    },
+    notes: [
+      "Pass category ID and token as query parameters: ?id=cat_1&token=...",
+      "Cascading delete removes all related options",
+      "Verifies ownership before deletion",
     ],
   },
 
@@ -515,10 +565,12 @@ const API_DOCS: ApiEndpoint[] = [
     method: "POST",
     path: "/api/option/create",
     description:
-      "Creates a new option within a category. This is the third step after creating configurator and category.",
+      "Creates a new option within a category. This is the third step after creating configurator and category. Requires a valid edit token.",
     category: "Option",
-    requiresAuth: true,
+    requiresAuth: false,
+    requiresEditToken: true,
     requestBody: {
+      token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
       categoryId: "cat_1",
       label: "15A - 120V",
       sku: "PWR-15A",
@@ -542,6 +594,8 @@ const API_DOCS: ApiEndpoint[] = [
       },
     },
     notes: [
+      "The 'token' field is required and must be a valid edit token",
+      "Edit tokens expire after 30 minutes",
       "categoryId, label, and price are required",
       "price can be 0 for free options",
       "imageUrl is optional but recommended",
@@ -553,10 +607,12 @@ const API_DOCS: ApiEndpoint[] = [
     method: "PUT",
     path: "/api/option/update",
     description:
-      "Updates an existing option's properties and sets incompatibility rules with other options.",
+      "Updates an existing option's properties and sets incompatibility rules with other options. Requires a valid edit token.",
     category: "Option",
-    requiresAuth: true,
+    requiresAuth: false,
+    requiresEditToken: true,
     requestBody: {
+      token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
       id: "opt_1",
       label: "Updated Option Label",
       price: 125.5,
@@ -574,10 +630,44 @@ const API_DOCS: ApiEndpoint[] = [
       },
     },
     notes: [
+      "The 'token' field is required and must be a valid edit token",
       "incompatibleWith is an array of option IDs",
       "Setting incompatibleWith creates OptionIncompatibility records",
       "Incompatibilities are bidirectional (A incompatible with B means B incompatible with A)",
       "Pass empty array to remove all incompatibilities",
+    ],
+  },
+  {
+    name: "Delete Option",
+    method: "DELETE",
+    path: "/api/option/update",
+    description: "Deletes an option. Requires a valid edit token.",
+    category: "Option",
+    requiresAuth: false,
+    requiresEditToken: true,
+    queryParams: [
+      {
+        name: "id",
+        type: "string",
+        required: true,
+        description: "The option ID to delete",
+      },
+      {
+        name: "token",
+        type: "string",
+        required: true,
+        description: "Valid edit token",
+      },
+    ],
+    responseExample: {
+      success: true,
+      message: "Option deleted",
+      data: null,
+    },
+    notes: [
+      "Pass option ID and token as query parameters: ?id=opt_1&token=...",
+      "Removes all incompatibility relationships",
+      "Verifies ownership before deletion",
     ],
   },
 
@@ -618,10 +708,13 @@ const API_DOCS: ApiEndpoint[] = [
     name: "Create Theme",
     method: "POST",
     path: "/api/theme/create",
-    description: "Creates a custom theme for configurators.",
+    description:
+      "Creates a custom theme for configurators. Requires a valid edit token.",
     category: "Theme",
-    requiresAuth: true,
+    requiresAuth: false,
+    requiresEditToken: true,
     requestBody: {
+      token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
       name: "Custom Industrial Theme",
       description: "Dark theme for industrial applications",
       primaryColor: "220 70% 50%",
@@ -645,6 +738,7 @@ const API_DOCS: ApiEndpoint[] = [
       },
     },
     notes: [
+      "The 'token' field is required and must be a valid edit token",
       "All color fields use HSL format",
       "Only one theme can be marked as isDefault: true",
       "Use theme ID when creating a configurator",
@@ -654,10 +748,13 @@ const API_DOCS: ApiEndpoint[] = [
     name: "Update Theme",
     method: "PUT",
     path: "/api/theme/update",
-    description: "Updates an existing theme's properties.",
+    description:
+      "Updates an existing theme's properties. Requires a valid edit token.",
     category: "Theme",
-    requiresAuth: true,
+    requiresAuth: false,
+    requiresEditToken: true,
     requestBody: {
+      token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
       id: "theme_1",
       name: "Updated Theme Name",
       primaryColor: "200 80% 45%",
@@ -672,6 +769,43 @@ const API_DOCS: ApiEndpoint[] = [
         updatedAt: "2025-01-15T10:00:00Z",
       },
     },
+    notes: [
+      "The 'token' field is required and must be a valid edit token",
+      "Only include fields you want to update",
+    ],
+  },
+  {
+    name: "Delete Theme",
+    method: "DELETE",
+    path: "/api/theme/update",
+    description: "Deletes a theme. Requires a valid edit token.",
+    category: "Theme",
+    requiresAuth: false,
+    requiresEditToken: true,
+    queryParams: [
+      {
+        name: "id",
+        type: "string",
+        required: true,
+        description: "The theme ID to delete",
+      },
+      {
+        name: "token",
+        type: "string",
+        required: true,
+        description: "Valid edit token",
+      },
+    ],
+    responseExample: {
+      success: true,
+      message: "Theme deleted",
+      data: null,
+    },
+    notes: [
+      "Pass theme ID and token as query parameters: ?id=theme_1&token=...",
+      "Cannot delete theme if it's in use by configurators",
+      "Verifies ownership before deletion",
+    ],
   },
 
   // ==================== QUOTE ====================
@@ -1004,7 +1138,8 @@ export default function ApiDocsPage() {
           <div>
             <h3 className="font-semibold mb-2 flex items-center gap-2">
               <Ticket className="h-4 w-4" />
-              Edit Token Flow (for Configurator Updates)
+              Edit Token Flow (for Configurator, Category, Theme, and Option
+              Updates)
             </h3>
             <ol className="text-sm space-y-2 list-decimal list-inside">
               <li>
@@ -1016,11 +1151,13 @@ export default function ApiDocsPage() {
               </li>
               <li>Receive a JWT token valid for 30 minutes</li>
               <li>
-                Use token in{" "}
-                <code className="bg-white dark:bg-gray-900 px-2 py-1 rounded">
-                  /api/configurator/update
-                </code>{" "}
-                requests
+                Use token in write operations:{" "}
+                <ul className="ml-6 mt-1 space-y-1">
+                  <li>• Configurator: update, delete</li>
+                  <li>• Category: create, update, delete</li>
+                  <li>• Option: create, update, delete</li>
+                  <li>• Theme: create, update, delete</li>
+                </ul>
               </li>
               <li>
                 Optionally verify token with{" "}
@@ -1029,6 +1166,11 @@ export default function ApiDocsPage() {
                 </code>
               </li>
             </ol>
+            <p className="text-xs text-muted-foreground mt-2">
+              <strong>Note:</strong> All create/update/delete operations for
+              Category, Theme, and Option now require edit tokens for enhanced
+              security.
+            </p>
           </div>
 
           <div>
