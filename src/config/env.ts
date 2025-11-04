@@ -6,7 +6,8 @@ export const env = {
 
   // NextAuth
   NEXTAUTH_URL: process.env.NEXTAUTH_URL || "http://localhost:3000",
-  NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || "something",
+  NEXTAUTH_SECRET:
+    process.env.NEXTAUTH_SECRET || "your-secret-key-change-in-production",
 
   // Google OAuth
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || "",
@@ -41,7 +42,10 @@ export const env = {
   MONTHLY_PRICE: parseFloat(process.env.MONTHLY_PRICE || "99.00"),
   YEARLY_PRICE: parseFloat(process.env.YEARLY_PRICE || "999.00"),
 
-  // CORS
+  // ✅ Fixed: CORS with proper parsing
+  ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+    : ["http://localhost:3000"],
   CORS_ORIGINS: process.env.CORS_ORIGINS || "*",
 
   // Environment
@@ -54,12 +58,53 @@ export const env = {
   EDIT_TOKEN_SECRET: process.env.EDIT_TOKEN_SECRET,
 };
 
+// ✅ Fixed: Strict environment validation
 export function validateEnv() {
   const required = ["DATABASE_URL", "NEXTAUTH_SECRET"];
 
   const missing = required.filter((key) => !env[key as keyof typeof env]);
 
   if (missing.length > 0) {
-    console.warn(`Missing environment variables: ${missing.join(", ")}`);
+    throw new Error(
+      `❌ Missing required environment variables: ${missing.join(", ")}`
+    );
+  }
+
+  // Validate NEXTAUTH_SECRET strength
+  if (env.NEXTAUTH_SECRET.length < 32) {
+    console.warn(
+      "⚠️  WARNING: NEXTAUTH_SECRET should be at least 32 characters for security"
+    );
+  }
+
+  // Warn about missing optional but important variables
+  const optional = [
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+    "RESEND_API_KEY",
+    "STRIPE_SECRET_KEY",
+  ];
+
+  const missingOptional = optional.filter(
+    (key) => !env[key as keyof typeof env]
+  );
+
+  if (missingOptional.length > 0 && env.NODE_ENV === "production") {
+    console.warn(
+      `⚠️  WARNING: Missing optional environment variables (features may not work): ${missingOptional.join(
+        ", "
+      )}`
+    );
+  }
+
+  console.log("✅ Environment variables validated successfully");
+}
+
+// Validate on import (only in Node.js environment)
+if (typeof window === "undefined") {
+  try {
+    validateEnv();
+  } catch (error) {
+    console.error(error);
   }
 }

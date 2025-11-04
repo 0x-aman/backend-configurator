@@ -7,6 +7,7 @@ import {
 } from "@/src/middleware/rate-limit";
 import { applyCors } from "@/src/middleware/cors";
 import { validateApiKey, validatePublicKey } from "@/src/middleware/api-key";
+import { env } from "@/src/config/env";
 
 export async function middleware(request: NextRequest) {
   const token = await getToken({
@@ -15,15 +16,43 @@ export async function middleware(request: NextRequest) {
   });
   const { pathname } = request.nextUrl;
 
-  // Example: Apply CORS for all API routes
+  // ✅ Fixed: CORS with environment-based origins
   if (pathname.startsWith("/api")) {
-    const allowedOrigins = ["http://localhost:8080", "localhost"];
-
+    const allowedOrigins = env.ALLOWED_ORIGINS || [
+      "http://localhost:3000",
+      "http://localhost:8080",
+    ];
     const corsResponse = applyCors(request, allowedOrigins);
     if (corsResponse) return corsResponse;
   }
 
-  // Example: Apply rate limiting for public API routes
+  // ✅ Fixed: Rate limiting for ALL auth endpoints
+  if (
+    pathname.startsWith("/api/auth/login") ||
+    pathname.startsWith("/api/auth/register") ||
+    pathname.startsWith("/api/auth/forgot-password") ||
+    pathname.startsWith("/api/auth/reset-password")
+  ) {
+    const identifier = getRateLimitIdentifier(request);
+    try {
+      // Stricter limits for auth endpoints
+      applyRateLimit(request, identifier, {
+        max: 5, // 5 requests
+        windowMs: 15 * 60 * 1000, // per 15 minutes
+      });
+    } catch (err) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: (err as Error).message,
+          code: "RATE_LIMIT_EXCEEDED",
+        },
+        { status: 429 }
+      );
+    }
+  }
+
+  // Rate limiting for public API routes
   if (pathname.startsWith("/api/public")) {
     const identifier = getRateLimitIdentifier(request);
     try {
@@ -36,7 +65,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Example: API key validation for certain endpoints
+  // API key validation for certain endpoints
   if (pathname.startsWith("/api/secure")) {
     try {
       await validateApiKey(request);
@@ -55,6 +84,7 @@ export async function middleware(request: NextRequest) {
     "/register",
     "/forgot-password",
     "/reset-password",
+    "/verify-email",
     "/pricing",
     "/api",
   ];
@@ -76,8 +106,6 @@ export async function middleware(request: NextRequest) {
   if (token && (pathname === "/login" || pathname === "/register")) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
-
-  // ...add more middleware composition as needed
 
   return NextResponse.next();
 }

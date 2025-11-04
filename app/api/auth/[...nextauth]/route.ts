@@ -31,6 +31,11 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Invalid credentials");
         }
 
+        // ✅ Check if account is locked
+        if (client.lockedUntil && client.lockedUntil > new Date()) {
+          throw new Error("Account is locked due to too many failed attempts");
+        }
+
         const isValid = await verifyPassword(
           credentials.password,
           client.passwordHash
@@ -42,6 +47,8 @@ export const authOptions: NextAuthOptions = {
         // Update last login
         await ClientService.update(client.id, {
           lastLoginAt: new Date(),
+          failedLoginAttempts: 0,
+          lockedUntil: null,
         });
 
         return {
@@ -53,10 +60,26 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    // ✅ Fixed: Simplified signIn callback
     async signIn({ user, account, profile }) {
-      // keep signIn simple and allow the flow to continue.
-      // Database linking/creation is handled in the `events.signIn` handler
-      // (which runs after the adapter has created/linked the user record).
+      // For Google OAuth, perform account linking check here
+      if (account?.provider === "google" && user?.email) {
+        const existingClient = await prisma.client.findUnique({
+          where: { email: user.email },
+        });
+
+        // If client exists with different Google ID, prevent sign in
+        if (
+          existingClient &&
+          existingClient.googleId &&
+          existingClient.googleId !== account.providerAccountId
+        ) {
+          console.error(
+            "Attempted sign in with different Google account for same email"
+          );
+          return false; // Prevent sign in
+        }
+      }
       return true;
     },
     async session({ session, token }) {
@@ -73,6 +96,7 @@ export const authOptions: NextAuthOptions = {
                 avatarUrl: true,
                 subscriptionStatus: true,
                 subscriptionDuration: true,
+                emailVerified: true,
               },
             },
           },
@@ -87,6 +111,7 @@ export const authOptions: NextAuthOptions = {
             avatarUrl: user.client.avatarUrl,
             subscriptionStatus: user.client.subscriptionStatus,
             subscriptionDuration: user.client.subscriptionDuration,
+            emailVerified: user.client.emailVerified,
           } as any;
         }
       }
@@ -112,7 +137,7 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
   },
-  // Use NextAuth events to perform post-creation/post-signin linking
+  // ✅ Improved: Use events for post-signin actions
   events: {
     async signIn({ user, account, profile, isNewUser }: any) {
       try {
@@ -128,57 +153,29 @@ export const authOptions: NextAuthOptions = {
             include: { client: true },
           });
 
-          if (existingUser) {
-            // If user exists but has no client, link or create one
-            if (!existingUser.clientId) {
-              if (existingClient) {
-                // Link to existing client
-                await prisma.client.update({
-                  where: { id: existingClient.id },
-                  data: {
-                    googleId: account.providerAccountId,
-                    emailVerified: true,
-                    lastLoginAt: new Date(),
-                  },
-                });
-
-                await prisma.user.update({
-                  where: { id: existingUser.id },
-                  data: { clientId: existingClient.id },
-                });
-              } else {
-                // Create a new client and link
-                const client = await prisma.client.create({
-                  data: {
-                    email: user.email,
-                    name: user.name || "User",
-                    googleId: account.providerAccountId,
-                    emailVerified: true,
-                    lastLoginAt: new Date(),
-                  },
-                });
-
-                await prisma.user.update({
-                  where: { id: existingUser.id },
-                  data: { clientId: client.id },
-                });
-              }
-            } else {
-              // User already linked to a client — update client's googleId
-              await prisma.client.update({
-                where: { id: existingUser.clientId },
+          if (existingUser && !existingUser.clientId && existingClient) {
+            // Link existing email/password client to OAuth user
+            await prisma.$transaction([
+              prisma.client.update({
+                where: { id: existingClient.id },
                 data: {
                   googleId: account.providerAccountId,
                   emailVerified: true,
                   lastLoginAt: new Date(),
                 },
-              });
-            }
-          } else if (existingClient) {
-            // Rare case: client exists but user record not found. Update client googleId so when
-            // the adapter later creates the user it can be linked by email.
+              }),
+              prisma.user.update({
+                where: { id: existingUser.id },
+                data: { 
+                  clientId: existingClient.id,
+                  emailVerified: new Date(),
+                },
+              }),
+            ]);
+          } else if (existingUser?.clientId) {
+            // Update existing linked client
             await prisma.client.update({
-              where: { id: existingClient.id },
+              where: { id: existingUser.clientId },
               data: {
                 googleId: account.providerAccountId,
                 emailVerified: true,
@@ -198,7 +195,7 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 7 * 24 * 60 * 60, // 7
+    maxAge: 7 * 24 * 60 * 60, // ✅ Fixed: 7 days (matching JWT expiry)
   },
   secret: env.NEXTAUTH_SECRET,
 };

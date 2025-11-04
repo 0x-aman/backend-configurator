@@ -405,6 +405,7 @@ export default function BillingPage() {
     );
   }
 
+  console.log(billing, "billing");
   return (
     <div className="p-6 lg:p-8">
       <div className="mb-8">

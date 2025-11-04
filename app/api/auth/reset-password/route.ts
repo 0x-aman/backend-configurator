@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { hashPassword } from "@/src/lib/auth";
 import { AppError } from "@/src/lib/errors";
@@ -16,31 +16,38 @@ export async function POST(req: NextRequest) {
       throw new AppError("Password must be at least 8 characters", 400);
     }
 
-    // Find client with valid reset token
-    const client = await prisma.client.findFirst({
-      where: {
-        resetToken: token,
-        resetTokenExpires: {
-          gt: new Date(),
+    // ✅ Fixed: Use transaction to prevent token reuse
+    const result = await prisma.$transaction(async (tx) => {
+      // First, find and verify token is still valid
+      const client = await tx.client.findFirst({
+        where: {
+          resetToken: token,
+          resetTokenExpires: {
+            gt: new Date(),
+          },
         },
-      },
-    });
+      });
 
-    if (!client) {
-      throw new AppError("Invalid or expired reset token", 400);
-    }
+      if (!client) {
+        throw new AppError("Invalid or expired reset token", 400);
+      }
 
-    // Hash new password
-    const passwordHash = await hashPassword(password);
+      // Hash new password
+      const passwordHash = await hashPassword(password);
 
-    // Update password and clear reset token
-    await prisma.client.update({
-      where: { id: client.id },
-      data: {
-        passwordHash,
-        resetToken: null,
-        resetTokenExpires: null,
-      },
+      // Update password, clear token, and reset failed attempts
+      await tx.client.update({
+        where: { id: client.id },
+        data: {
+          passwordHash,
+          resetToken: null,
+          resetTokenExpires: null,
+          failedLoginAttempts: 0, // ✅ Reset failed attempts
+          lockedUntil: null, // ✅ Unlock account if locked
+        },
+      });
+
+      return client;
     });
 
     return success({

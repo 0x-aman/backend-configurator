@@ -3,7 +3,11 @@ import { prisma } from "@/src/lib/prisma";
 import { hashPassword } from "@/src/lib/auth";
 import { generateApiKey, generatePublicKey } from "@/src/lib/api-keys";
 import { NotFoundError, ConflictError } from "@/src/lib/errors";
-import type { Client, SubscriptionStatus, SubscriptionDuration } from "@prisma/client";
+import type {
+  Client,
+  SubscriptionStatus,
+  SubscriptionDuration,
+} from "@prisma/client";
 
 export const ClientService = {
   async create(data: {
@@ -120,13 +124,31 @@ export const ClientService = {
     await prisma.client.delete({ where: { id } });
   },
 
+  // ✅ Fixed: Return only safe fields, no sensitive data
   async getSafeClient(id: string) {
     const client = await this.getById(id);
-    const { resetToken, emailVerifyToken, ...safe } = client;
-    // Include hasPassword indicator but not the actual hash
+
     return {
-      ...safe,
-      passwordHash: client.passwordHash ? "SET" : undefined,
+      id: client.id,
+      email: client.email,
+      name: client.name,
+      companyName: client.companyName,
+      avatarUrl: client.avatarUrl,
+      phone: client.phone,
+      emailVerified: client.emailVerified,
+      subscriptionStatus: client.subscriptionStatus,
+      subscriptionDuration: client.subscriptionDuration,
+      subscriptionEndsAt: client.subscriptionEndsAt,
+      trialEndsAt: client.trialEndsAt,
+      hasPassword: !!client.passwordHash, // Boolean instead of exposing hash
+      hasGoogleLinked: !!client.googleId,
+      allowedDomains: client.allowedDomains,
+      monthlyRequests: client.monthlyRequests,
+      requestLimit: client.requestLimit,
+      createdAt: client.createdAt,
+      lastLoginAt: client.lastLoginAt,
+      stripeCustomerId: client.stripeCustomerId,
+      // ❌ Never expose: apiKey, publicKey, resetToken, stripeCustomerId, etc.
     };
   },
 };

@@ -5,7 +5,7 @@ import { env } from "@/src/config/env";
 import { Client } from "@prisma/client";
 
 const JWT_SECRET = env.NEXTAUTH_SECRET;
-const JWT_EXPIRES_IN = "8WEEKS";
+const JWT_EXPIRES_IN = "7d"; // ✅ Fixed: 7 days instead of "8WEEKS"
 
 export async function hashPassword(password: string): Promise<string> {
   return await hash(password, 12);
@@ -34,13 +34,10 @@ export function verifyJWT(token: string): any {
   try {
     // Basic JWT format check: three dot-separated parts
     if (!token || typeof token !== "string" || token.split(".").length !== 3) {
-      console.log("Malformed JWT token", token);
       return null;
     }
-    // Remove debug log for production
     return verify(token, JWT_SECRET);
   } catch (error) {
-    console.log(error, "error");
     return null;
   }
 }

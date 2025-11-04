@@ -100,11 +100,11 @@ model Client {
 
   // Email Verification
   emailVerified     Boolean   @default(false)
-  emailVerifyToken  String?
+  emailVerifyToken  String?   @unique
   emailVerifySentAt DateTime?
 
   // Password Reset
-  resetToken        String?
+  resetToken        String?   @unique
   resetTokenExpires DateTime?
 
   // Billing & Subscription
@@ -155,6 +155,10 @@ model Client {
   @@index([publicKey])
   @@index([subscriptionStatus])
   @@index([createdAt])
+  @@index([resetToken])
+  @@index([emailVerifyToken])
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
   @@map("clients")
 }
 

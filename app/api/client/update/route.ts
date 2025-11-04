@@ -4,6 +4,7 @@ import { authenticateRequest } from '@/src/middleware/auth';
 import { ClientService } from '@/src/services/client.service';
 import { hashPassword, verifyPassword } from '@/src/lib/auth';
 import { success, fail } from '@/src/lib/response';
+import { sanitizeText } from '@/src/utils/sanitize';
 
 export async function PUT(request: NextRequest) {
   try {
@@ -33,17 +34,29 @@ export async function PUT(request: NextRequest) {
       return success({ message: 'Password updated successfully' }, 'Password updated');
     }
 
+    // ✅ Fixed: Sanitize inputs before saving
+    const sanitizedData: any = {};
+    
+    if (name !== undefined) {
+      sanitizedData.name = sanitizeText(name);
+    }
+    if (companyName !== undefined) {
+      sanitizedData.companyName = companyName ? sanitizeText(companyName) : null;
+    }
+    if (phone !== undefined) {
+      sanitizedData.phone = phone ? sanitizeText(phone) : null;
+    }
+    if (avatarUrl !== undefined) {
+      sanitizedData.avatarUrl = avatarUrl;
+    }
+
     // Handle profile update
-    const updated = await ClientService.update(client.id, {
-      name,
-      companyName,
-      phone,
-      avatarUrl,
-    });
+    const updated = await ClientService.update(client.id, sanitizedData);
 
     const safeClient = await ClientService.getSafeClient(updated.id);
     return success(safeClient, 'Profile updated');
   } catch (error: any) {
+    console.error('Update client error:', error);
     return fail(error.message, 'UPDATE_ERROR', 500);
   }
 }

@@ -24,8 +24,51 @@ export function isValidPhone(phone: string): boolean {
   return phoneRegex.test(phone);
 }
 
-export function isValidPassword(password: string): boolean {
-  return password.length >= 8;
+// ✅ Fixed: Stronger password validation
+export function isValidPassword(password: string): {
+  valid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+  
+  if (password.length < 8) {
+    errors.push("Password must be at least 8 characters");
+  }
+  
+  if (password.length > 128) {
+    errors.push("Password is too long (max 128 characters)");
+  }
+  
+  if (!/[a-z]/.test(password)) {
+    errors.push("Password must contain a lowercase letter");
+  }
+  
+  if (!/[A-Z]/.test(password)) {
+    errors.push("Password must contain an uppercase letter");
+  }
+  
+  if (!/[0-9]/.test(password)) {
+    errors.push("Password must contain a number");
+  }
+  
+  if (!/[^a-zA-Z0-9]/.test(password)) {
+    errors.push("Password must contain a special character");
+  }
+  
+  // Check for common passwords
+  const commonPasswords = [
+    "password", "12345678", "qwerty", "admin", "letmein",
+    "welcome", "monkey", "1234567890", "abc123", "password1"
+  ];
+  
+  if (commonPasswords.some(p => password.toLowerCase().includes(p))) {
+    errors.push("Password is too common or easily guessable");
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
 }
 
 export function validateRequired(value: any, fieldName: string): void {
@@ -41,8 +84,9 @@ export function validateEmail(email: string): void {
 }
 
 export function validatePassword(password: string): void {
-  if (!isValidPassword(password)) {
-    throw new Error('Password must be at least 8 characters long');
+  const result = isValidPassword(password);
+  if (!result.valid) {
+    throw new Error(result.errors[0]); // Throw first error
   }
 }
 
