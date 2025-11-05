@@ -14,6 +14,8 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
+      allowDangerousEmailAccountLinking: true,
+      authorization: { params: { prompt: "consent", access_type: "offline" } },
     }),
     CredentialsProvider({
       name: "Credentials",
@@ -60,27 +62,35 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    // ✅ Fixed: Simplified signIn callback
+    // ✅ Improved: signIn callback with better error handling
     async signIn({ user, account, profile }) {
-      // For Google OAuth, perform account linking check here
-      if (account?.provider === "google" && user?.email) {
-        const existingClient = await prisma.client.findUnique({
-          where: { email: user.email },
-        });
+      try {
+        // For Google OAuth, perform account linking validation
+        if (account?.provider === "google" && user?.email) {
+          const existingClient = await prisma.client.findUnique({
+            where: { email: user.email },
+          });
 
-        // If client exists with different Google ID, prevent sign in
-        if (
-          existingClient &&
-          existingClient.googleId &&
-          existingClient.googleId !== account.providerAccountId
-        ) {
-          console.error(
-            "Attempted sign in with different Google account for same email"
-          );
-          return false; // Prevent sign in
+          // ✅ Check if a different Google account is already linked
+          if (
+            existingClient &&
+            existingClient.googleId &&
+            existingClient.googleId !== account.providerAccountId
+          ) {
+            console.error(
+              `Account linking conflict: Email ${user.email} is already linked to a different Google account`
+            );
+            // Redirect to error page with specific message
+            return `/login?error=OAuthAccountNotLinked&email=${encodeURIComponent(user.email)}`;
+          }
+
+          // ✅ If client exists without Google ID, linking will happen in events.signIn
         }
+        return true;
+      } catch (error) {
+        console.error("SignIn callback error:", error);
+        return false;
       }
-      return true;
     },
     async session({ session, token }) {
       if (token.sub) {
@@ -136,44 +146,51 @@ export const authOptions: NextAuthOptions = {
 
       return token;
     },
+    // Ensure NextAuth honors callbackUrl and doesn't drop query params or redirect to a default
+    async redirect({ url, baseUrl }) {
+      try {
+        // If the callback is a relative path (starts with '/'), allow it
+        if (url && url.startsWith("/")) return `${baseUrl}${url}`;
+
+        // If callback is same origin, allow it as-is
+        if (url && url.startsWith(baseUrl)) return url;
+
+        // Fallback: send user to dashboard
+        return `${baseUrl}/dashboard`;
+      } catch (err) {
+        console.error("redirect callback error:", err);
+        return `${baseUrl}/dashboard`;
+      }
+    },
   },
-  // ✅ Improved: Use events for post-signin actions
+  // ✅ Improved: Use events for post-signin actions and account linking
   events: {
+    async linkAccount({ user, account }) {
+      try {
+        if (account?.provider === "google" && user?.id) {
+          const found = await prisma.user.findUnique({ where: { id: user.id } });
+          if (found?.clientId) {
+            await prisma.client.update({
+              where: { id: found.clientId },
+              data: { googleId: account.providerAccountId, emailVerified: true, lastLoginAt: new Date() },
+            });
+          }
+        }
+      } catch (e) {
+        console.error("events.linkAccount failed", e);
+      }
+    },
     async signIn({ user, account, profile, isNewUser }: any) {
       try {
         if (account?.provider === "google" && user?.email) {
-          // Find any existing client (from email/password signup flow)
-          const existingClient = await prisma.client.findUnique({
-            where: { email: user.email },
-          });
-
           // Find the user record created/managed by the adapter
           const existingUser = await prisma.user.findUnique({
             where: { email: user.email },
             include: { client: true },
           });
 
-          if (existingUser && !existingUser.clientId && existingClient) {
-            // Link existing email/password client to OAuth user
-            await prisma.$transaction([
-              prisma.client.update({
-                where: { id: existingClient.id },
-                data: {
-                  googleId: account.providerAccountId,
-                  emailVerified: true,
-                  lastLoginAt: new Date(),
-                },
-              }),
-              prisma.user.update({
-                where: { id: existingUser.id },
-                data: { 
-                  clientId: existingClient.id,
-                  emailVerified: new Date(),
-                },
-              }),
-            ]);
-          } else if (existingUser?.clientId) {
-            // Update existing linked client
+          if (existingUser?.clientId) {
+            // ✅ Update client with Google ID and last login
             await prisma.client.update({
               where: { id: existingUser.clientId },
               data: {
@@ -181,6 +198,25 @@ export const authOptions: NextAuthOptions = {
                 emailVerified: true,
                 lastLoginAt: new Date(),
               },
+            });
+
+            console.log(
+              `✅ Google account linked successfully for user: ${user.email}`
+            );
+          }
+        }
+
+        // Update last login for all sign-ins
+        if (user?.email) {
+          const userRecord = await prisma.user.findUnique({
+            where: { email: user.email },
+            select: { clientId: true },
+          });
+
+          if (userRecord?.clientId) {
+            await prisma.client.update({
+              where: { id: userRecord.clientId },
+              data: { lastLoginAt: new Date() },
             });
           }
         }
@@ -191,7 +227,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/login",
-    error: "/login?error=true",
+    error: "/login", // Errors will be passed as URL params
   },
   session: {
     strategy: "jwt",

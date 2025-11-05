@@ -147,8 +147,10 @@ model Client {
   user            User?
 
   // Audit
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  billingUsage       BillingUsage[]
+  auditBillingEvents AuditBillingEvent[]
 
   @@index([email])
   @@index([apiKey])
@@ -718,4 +720,26 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+model BillingUsage {
+  id                  String   @id @default(cuid())
+  clientId            String
+  totalPrimaryOptions Int      @default(0)
+  chargedBlocks       Int      @default(0)
+  lastSync            DateTime @default(now())
+  client              Client   @relation(fields: [clientId], references: [id])
+
+  @@index([clientId])
+}
+
+model AuditBillingEvent {
+  id        String   @id @default(cuid())
+  clientId  String
+  event     String
+  details   Json?
+  createdAt DateTime @default(now())
+  client    Client   @relation(fields: [clientId], references: [id])
+
+  @@index([clientId])
 }

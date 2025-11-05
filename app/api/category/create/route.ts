@@ -29,35 +29,55 @@ export async function POST(request: NextRequest) {
     }
 
     if (!configuratorId || !name) {
-      return fail("Configurator ID and name are required", "VALIDATION_ERROR");
+      return fail(
+        "Configurator ID and name are required",
+        "VALIDATION_ERROR",
+        400
+      );
     }
 
-    // 🔒 Verify token validity and decode client/configurator info
+    // 🔒 Verify token validity
     const payload = await verifyEditToken(token);
-
-    if (!payload || !payload.clientId || !payload.configuratorId) {
+    if (!payload?.clientId || !payload?.configuratorId) {
       return unauthorized("Invalid or expired edit token");
     }
 
-    // Verify that the configuratorId in the token matches the one in the request
+    // 🔒 Validate configurator match
     if (String(payload.configuratorId) !== String(configuratorId)) {
       return unauthorized("Configurator mismatch");
     }
 
-    // Verify configurator exists and ownership matches
+    // 🔒 Verify configurator exists & belongs to client
     const configurator = await prisma.configurator.findUnique({
       where: { id: configuratorId },
       select: { id: true, clientId: true },
     });
 
-    if (!configurator) {
-      return notFound("Configurator not found");
-    }
-
+    if (!configurator) return notFound("Configurator not found");
     if (configurator.clientId !== payload.clientId) {
       return unauthorized("Ownership mismatch");
     }
 
+    // ✅ Enforce only one primary category per configurator
+    if (isPrimary === true) {
+      const existingPrimary = await prisma.category.findFirst({
+        where: {
+          configuratorId,
+          isPrimary: true,
+        },
+        select: { id: true },
+      });
+
+      if (existingPrimary) {
+        return fail(
+          "Primary category already exists. Please upgrade to add more.",
+          "PLAN_LIMIT",
+          403
+        );
+      }
+    }
+
+    // ✅ Create category
     const category = await CategoryService.create(configuratorId, {
       name,
       categoryType,
