@@ -1,68 +1,123 @@
-// Stripe webhook handler - CONSOLIDATED
-import { NextRequest } from 'next/server';
-import { constructWebhookEvent, stripe } from '@/src/lib/stripe';
-import { BillingService } from '@/src/services/billing.service';
-import { success, fail } from '@/src/lib/response';
+// Unified Stripe webhook
+import { NextRequest } from "next/server";
+import { constructWebhookEvent, stripe } from "@/src/lib/stripe";
+import { BillingService } from "@/src/services/billing.service";
+import { prisma } from "@/src/lib/prisma";
+import { success, fail } from "@/src/lib/response";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
-    const signature = request.headers.get('stripe-signature');
-
-    if (!signature) {
-      return fail('Missing signature', 'WEBHOOK_ERROR', 400);
-    }
+    const signature = request.headers.get("stripe-signature");
+    if (!signature) return fail("Missing signature", "WEBHOOK_ERROR", 400);
 
     const event = constructWebhookEvent(body, signature);
+    console.log(`[Webhook] ${event.type} ID: ${event.id}`);
 
-    console.log(`[Webhook] Received event: ${event.type} - ID: ${event.id}`);
-
-    // Handle different event types
     switch (event.type) {
-      case 'checkout.session.completed':
-        console.log('Handling checkout session completed:', event.data.object.id);
-        // When checkout completes, fetch the subscription and update client status
-        const session = event.data.object as any;
+      // ✅ Subscription checkout finished
+      case "checkout.session.completed": {
+        const session: any = event.data.object;
+
+        // Subscription plan checkout
         if (session.subscription) {
           const subscription = await stripe.subscriptions.retrieve(
-            session.subscription as string
+            session.subscription
           );
-          console.log(`[Webhook] Retrieved subscription ${subscription.id} from checkout session`);
           await BillingService.handleSubscriptionCreated(subscription);
-        } else {
-          console.warn('[Webhook] Checkout session completed without subscription');
         }
-        break;
 
-      case 'customer.subscription.created':
-        console.log('Handling subscription created:', event.data.object.id);
+        // ✅ Option block one-time purchase
+        // ✅ Option capacity upgrade (+10 options)
+        if (session.mode === "payment") {
+          const type = session.metadata?.type;
+
+          if (type === "OPTION_BLOCK") {
+            const customerId = session.customer as string;
+
+            const client = await prisma.client.findFirst({
+              where: { stripeCustomerId: customerId },
+              select: { id: true },
+            });
+
+            if (client) {
+              // Count current primary options in DB
+              const currentOptions = await prisma.option.count({
+                where: {
+                  category: {
+                    isPrimary: true,
+                    configurator: { clientId: client.id },
+                  },
+                },
+              });
+
+              // Store +10 block
+              await prisma.billingUsage.upsert({
+                where: { clientId: client.id },
+                update: {
+                  chargedBlocks: { increment: 1 },
+                  totalPrimaryOptions: currentOptions,
+                  lastSync: new Date(),
+                },
+                create: {
+                  clientId: client.id,
+                  chargedBlocks: 1,
+                  totalPrimaryOptions: currentOptions,
+                },
+              });
+
+              await prisma.auditBillingEvent.create({
+                data: {
+                  clientId: client.id,
+                  event: "OPTION_BLOCK_PURCHASED",
+                  details: { sessionId: session.id },
+                },
+              });
+
+              console.log(
+                `[Billing] +10 options added for client ${client.id} — now storing usage.`
+              );
+            }
+          }
+        }
+
+        break;
+      }
+
+      // ✅ New sub
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
         await BillingService.handleSubscriptionCreated(event.data.object);
         break;
 
-      case 'customer.subscription.updated':
-        console.log('Handling subscription updated:', event.data.object.id);
-        await BillingService.handleSubscriptionCreated(event.data.object);
-        break;
-
-      case 'customer.subscription.deleted':
-        console.log('Handling subscription deleted:', event.data.object.id);
+      // ✅ Cancel sub
+      case "customer.subscription.deleted":
         await BillingService.handleSubscriptionDeleted(event.data.object);
         break;
 
-      case 'invoice.paid':
-      case 'invoice.payment_succeeded':
-        // Invoices are automatically created by Stripe, no need to store separately
-        // They will be fetched via API when needed
-        console.log(`[Webhook] Invoice paid: ${event.data.object.id}`);
+      // ✅ Invoice paid = new billing cycle → reset block counter
+      case "invoice.payment_succeeded": {
+        const inv: any = event.data.object;
+        const sub = inv.subscription as string;
+        const client = await prisma.client.findFirst({
+          where: { stripeSubscriptionId: sub },
+        });
+        if (client) {
+          await prisma.billingUsage.updateMany({
+            where: { clientId: client.id },
+            data: { chargedBlocks: 0, lastSync: new Date() },
+          });
+        }
         break;
+      }
 
       default:
-        console.log(`[Webhook] Unhandled event type: ${event.type}`);
+        console.log(`Unhandled event: ${event.type}`);
     }
 
     return success({ received: true });
-  } catch (error: any) {
-    console.error('[Webhook] Error:', error);
-    return fail(error.message, 'WEBHOOK_ERROR', 400);
+  } catch (err: any) {
+    console.error("Webhook error:", err);
+    return fail(err.message, "WEBHOOK_ERROR", 400);
   }
 }

@@ -724,7 +724,7 @@ model VerificationToken {
 
 model BillingUsage {
   id                  String   @id @default(cuid())
-  clientId            String
+  clientId            String   @unique
   totalPrimaryOptions Int      @default(0)
   chargedBlocks       Int      @default(0)
   lastSync            DateTime @default(now())

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -20,12 +20,13 @@ import {
   Loader2,
   AlertCircle,
   ExternalLink,
-  TrendingUp,
   X,
   Download,
   Calendar,
   CheckCircle,
   XCircle,
+  Gauge,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
@@ -49,31 +50,38 @@ import type { BillingInfo, Transaction } from "@/src/types/billing";
 import type { ApiResponse } from "@/src/types/api";
 import type { ClientProfile } from "@/src/types/auth";
 
+type Usage = {
+  included: number;
+  used: number;
+  remaining: number;
+  limitReached: boolean;
+};
+
 export default function BillingPage() {
-  const { data: session, update: updateSession } = useSession();
+  const router = useRouter();
+  const { update: updateSession } = useSession();
   const searchParams = useSearchParams();
+
   const [billing, setBilling] = useState<BillingInfo | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [usage, setUsage] = useState<Usage | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
+  const [loadingUsage, setLoadingUsage] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [canceling, setCanceling] = useState(false);
 
+  const handledSuccessRef = useRef(false);
+  const processedSessionsRef = useRef<Set<string>>(new Set());
+
   const fetchBilling = useCallback(async () => {
     try {
       setLoading(true);
-      // ✅ Use consistent endpoint with proper typing
-      const response = await fetch("/api/auth/me", {
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch: ${response.status}`);
-      }
-
+      const response = await fetch("/api/auth/me", { cache: "no-store" });
+      if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
       const result: ApiResponse<ClientProfile> = await response.json();
-      
       if (result.success && result.data) {
         setBilling({
           subscriptionStatus: result.data.subscriptionStatus || "INACTIVE",
@@ -98,14 +106,10 @@ export default function BillingPage() {
       const response = await fetch("/api/billing/transactions", {
         cache: "no-store",
       });
-
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Authentication failed. Please sign in again.");
-        }
+        if (response.status === 401) throw new Error("Please sign in again.");
         throw new Error(`Failed to fetch: ${response.status}`);
       }
-
       const result: ApiResponse<Transaction[]> = await response.json();
       setTransactions(result.data || []);
     } catch (error: any) {
@@ -118,93 +122,99 @@ export default function BillingPage() {
     }
   }, []);
 
-  // Check for payment success/cancel on mount
-  // Use the serialized search params string as the dependency so the effect
-  // doesn't re-run on every render (useSearchParams can return a new object
-  // each render). This prevents an infinite refresh loop.
-  const searchString = searchParams.toString();
+  const fetchUsage = useCallback(async () => {
+    try {
+      setLoadingUsage(true);
+      const res = await fetch("/api/billing/usage", { cache: "no-store" });
+      if (!res.ok) throw new Error(`Usage fetch failed: ${res.status}`);
+      const data: Usage = await res.json();
+      setUsage(data);
+    } catch (e: any) {
+      console.warn("Usage not available:", e?.message || e);
+      setUsage(null);
+    } finally {
+      setLoadingUsage(false);
+    }
+  }, []);
 
-  const processedSessionsRef = useRef<Set<string>>(new Set());
-
+  // Handle checkout return without re-running multiple times.
   useEffect(() => {
-    const params = new URLSearchParams(searchString);
+    const params = new URLSearchParams(searchParams.toString());
     const success = params.get("success");
     const canceled = params.get("canceled");
     const sessionId = params.get("session_id");
 
-    let timer: ReturnType<typeof setTimeout> | null = null;
+    const clearUrl = () => {
+      // remove query params without triggering another mount
+      router.replace("/dashboard/billing");
+    };
 
     const refreshAll = async () => {
-      await fetchBilling();
-      await fetchTransactions();
-      await updateSession(); // Refresh NextAuth session
+      await Promise.all([fetchBilling(), fetchTransactions(), fetchUsage()]);
+      await updateSession();
     };
 
     const handleSuccess = async () => {
-      try {
-        // Avoid processing the same session_id multiple times
-        if (sessionId) {
-          if (processedSessionsRef.current.has(sessionId)) {
-            console.info("Session already processed:", sessionId);
-            return;
-          }
+      if (handledSuccessRef.current) return;
+      handledSuccessRef.current = true;
 
+      try {
+        if (sessionId && !processedSessionsRef.current.has(sessionId)) {
           const res = await fetch(
             `/api/billing/verify-session?session_id=${encodeURIComponent(sessionId)}`
           );
           if (!res.ok) console.warn("verify-session failed", await res.text());
-          // small delay to allow DB writes to settle
-          await new Promise((r) => setTimeout(r, 500));
           processedSessionsRef.current.add(sessionId);
         }
 
-        toast.success("Payment successful! Your subscription is now active.", {
-          duration: 5000,
+        // clear URL first to avoid the effect firing again
+        clearUrl();
+
+        // single refresh cycle
+        await refreshAll();
+
+        toast.success("Payment successful. Your subscription is updated.", {
+          duration: 4500,
           icon: <CheckCircle className="h-5 w-5" />,
         });
-
-        // Clean URL to remove success/session_id params so effect won't re-run
-        try {
-          const url = new URL(window.location.href);
-          url.searchParams.delete("success");
-          url.searchParams.delete("session_id");
-          url.searchParams.delete("canceled");
-          window.history.replaceState({}, "", url.pathname + url.search);
-        } catch (e) {
-          // ignore
-        }
-
-        // Refresh data after successful payment (give webhook a little time)
-        timer = setTimeout(refreshAll, 1500);
-      } catch (err: any) {
+      } catch (err) {
         console.error("Post-checkout verification failed:", err);
-        toast.success("Payment successful! Refreshing account info...", {
-          icon: <CheckCircle className="h-5 w-5" />,
-        });
-        // try to refresh once
+        // still clear and refresh once
+        clearUrl();
         await refreshAll();
       }
     };
 
     if (success === "true") {
       void handleSuccess();
-    } else if (canceled === "true") {
-      toast.error("Payment was canceled. Please try again.", {
-        duration: 5000,
+      return;
+    }
+
+    if (canceled === "true") {
+      toast.error("Payment was canceled.", {
+        duration: 4000,
         icon: <XCircle className="h-5 w-5" />,
       });
+      clearUrl();
+      // Still refresh base data
+      void (async () => {
+        await Promise.all([fetchBilling(), fetchTransactions(), fetchUsage()]);
+      })();
+      return;
     }
 
-    // Only fetch on initial mount if no success/cancel params
-    if (!success && !canceled) {
-      void fetchBilling();
-      void fetchTransactions();
-    }
-
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [searchString, updateSession, fetchBilling, fetchTransactions]);
+    // Initial load
+    void (async () => {
+      await Promise.all([fetchBilling(), fetchTransactions(), fetchUsage()]);
+    })();
+  }, [
+    searchParams,
+    router,
+    updateSession,
+    fetchBilling,
+    fetchTransactions,
+    fetchUsage,
+  ]);
 
   const handleSubscribe = async (duration: "MONTHLY" | "YEARLY") => {
     setActionLoading(true);
@@ -218,24 +228,16 @@ export default function BillingPage() {
           cancelUrl: `${window.location.origin}/dashboard/billing?canceled=true`,
         }),
       });
-
-      if (!response.ok) {
-        throw new Error(`Request failed: ${response.status}`);
-      }
-
+      if (!response.ok) throw new Error(`Request failed: ${response.status}`);
       const json = await response.json();
       const data = json.data || json;
-
-      if (data.url) {
-        toast.loading("Redirecting to checkout...", { duration: 2000 });
-        window.location.href = data.url;
-      } else {
-        throw new Error("No checkout URL received");
-      }
+      if (!data.url) throw new Error("No checkout URL received");
+      toast.loading("Redirecting to checkout...", { duration: 1200 });
+      window.location.href = data.url;
     } catch (error: any) {
       console.error("Failed to create checkout session:", error);
       toast.error("Failed to start checkout", {
-        description: error.message || "Please try again or contact support",
+        description: error.message || "Please try again.",
       });
       setActionLoading(false);
     }
@@ -251,24 +253,16 @@ export default function BillingPage() {
           returnUrl: `${window.location.origin}/dashboard/billing`,
         }),
       });
-
-      if (!response.ok) {
-        throw new Error(`Request failed: ${response.status}`);
-      }
-
+      if (!response.ok) throw new Error(`Request failed: ${response.status}`);
       const json = await response.json();
       const data = json.data || json;
-
-      if (data.url) {
-        toast.loading("Opening billing portal...", { duration: 2000 });
-        window.location.href = data.url;
-      } else {
-        throw new Error("No portal URL received");
-      }
+      if (!data.url) throw new Error("No portal URL received");
+      toast.loading("Opening billing portal...", { duration: 1200 });
+      window.location.href = data.url;
     } catch (error: any) {
       console.error("Failed to open billing portal:", error);
       toast.error("Failed to open billing portal", {
-        description: error.message || "Please try again or contact support",
+        description: error.message || "Please try again.",
       });
       setActionLoading(false);
     }
@@ -280,29 +274,52 @@ export default function BillingPage() {
       const response = await fetch("/api/billing/cancel-subscription", {
         method: "POST",
       });
-
       const json = await response.json();
-
       if (response.ok && json.success) {
-        toast.success("Subscription canceled successfully", {
-          description:
-            "You'll have access until the end of your billing period.",
-          duration: 5000,
-        });
+        toast.success(
+          "Subscription canceled. Access continues until period end.",
+          {
+            duration: 5000,
+          }
+        );
         setShowCancelDialog(false);
-        // Refresh billing info and session
-        fetchBilling();
-        updateSession();
+        await Promise.all([fetchBilling(), updateSession()]);
       } else {
         throw new Error(json.message || "Failed to cancel subscription");
       }
     } catch (error: any) {
       console.error("Failed to cancel subscription:", error);
       toast.error("Failed to cancel subscription", {
-        description: error.message || "Please try again or contact support",
+        description: error.message || "Please try again.",
       });
     } finally {
       setCanceling(false);
+    }
+  };
+
+  const handleAddOptionsBlock = async () => {
+    setActionLoading(true);
+    try {
+      const res = await fetch("/api/billing/create-usage-upgrade-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          successUrl: `${window.location.origin}/dashboard/billing?success=true`,
+          cancelUrl: `${window.location.origin}/dashboard/billing?canceled=true`,
+        }),
+      });
+      if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+      const json = await res.json();
+      const data = json.data || json;
+      if (!data.url) throw new Error("No checkout URL received");
+      toast.loading("Redirecting to checkout...", { duration: 1200 });
+      window.location.href = data.url;
+    } catch (e: any) {
+      console.error("Add options failed:", e);
+      toast.error("Failed to start upgrade", {
+        description: e.message || "Please try again.",
+      });
+      setActionLoading(false);
     }
   };
 
@@ -311,90 +328,6 @@ export default function BillingPage() {
   const hasSubscription = isActive || isCanceled;
   const currentPlan = billing?.subscriptionDuration;
 
-  const getPageHeading = () => {
-    if (!hasSubscription) return "Choose Your Plan";
-    if (currentPlan === "MONTHLY") return "Upgrade Your Plan";
-    return "Change Your Plan";
-  };
-
-  const pricingPlans = [
-    {
-      duration: "MONTHLY" as const,
-      price: "€99",
-      priceNumber: 99,
-      period: "per month",
-      description: "Billed monthly",
-      features: [
-        "Unlimited configurators",
-        "Unlimited quotes",
-        "Email support",
-        "Custom branding",
-        "Analytics dashboard",
-        "API access",
-      ],
-    },
-    {
-      duration: "YEARLY" as const,
-      price: "€999",
-      priceNumber: 999,
-      period: "per year",
-      description: "Billed annually",
-      savings: "Save €189 per year",
-      features: [
-        "Everything in Monthly",
-        "Priority support",
-        "Advanced analytics",
-        "White-label option",
-        "Dedicated account manager",
-        "Custom integrations",
-      ],
-    },
-  ];
-
-  // Helper component to show a simple pro-rated upgrade estimate
-  function UpgradeCostSummary({
-    subscriptionEndsAt,
-    monthlyPrice,
-    yearlyPrice,
-  }: {
-    subscriptionEndsAt?: string | null;
-    monthlyPrice: number;
-    yearlyPrice: number;
-  }) {
-    if (!subscriptionEndsAt) {
-      return (
-        <p className="text-sm">
-          Pay <strong>€{yearlyPrice.toFixed(2)}</strong> to switch now.
-        </p>
-      );
-    }
-
-    const now = new Date();
-    const ends = new Date(subscriptionEndsAt);
-    const diffDays = Math.max(
-      0,
-      Math.ceil((ends.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-    );
-    const monthsRemaining = diffDays / 30; // approximate
-    const credit = monthlyPrice * monthsRemaining;
-    const upgradeCost = Math.max(0, yearlyPrice - credit);
-
-    return (
-      <div className="rounded-md p-3 bg-muted">
-        <div className="text-sm">
-          Estimated due now: <strong>€{upgradeCost.toFixed(2)}</strong>
-        </div>
-        <div className="text-xs text-muted-foreground mt-1">
-          This includes a pro-rated credit of{" "}
-          <strong>€{credit.toFixed(2)}</strong> for the remaining{" "}
-          {Math.max(1, Math.ceil(monthsRemaining))} month(s) on your current
-          plan.
-        </div>
-      </div>
-    );
-  }
-
-  console.log(billing, "billing");
   return (
     <div className="p-6 lg:p-8">
       <div className="mb-8">
@@ -409,8 +342,8 @@ export default function BillingPage() {
         </p>
       </div>
 
-      {/* Current Subscription Status */}
-      <Card className="mb-8">
+      {/* Current Subscription */}
+      <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
@@ -488,8 +421,8 @@ export default function BillingPage() {
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    You don't have an active subscription. Choose a plan below
-                    to get started.
+                    You don&apos;t have an active subscription. Choose a plan
+                    below to get started.
                   </AlertDescription>
                 </Alert>
               )}
@@ -498,7 +431,7 @@ export default function BillingPage() {
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    Your subscription is canceled. You'll have access until{" "}
+                    Your subscription is canceled. You&apos;ll have access until{" "}
                     {billing?.subscriptionEndsAt
                       ? new Date(
                           billing.subscriptionEndsAt
@@ -513,196 +446,102 @@ export default function BillingPage() {
         </CardContent>
       </Card>
 
-      {/* Pricing Plans */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold mb-2">{getPageHeading()}</h2>
-        <p className="text-muted-foreground">
-          {hasSubscription
-            ? currentPlan === "MONTHLY"
-              ? "You're on a monthly plan — upgrade to yearly to save money"
-              : "You're on a yearly plan. Manage or change your subscription below."
-            : "Select the billing cycle that works best for you"}
-        </p>
-      </div>
-
-      {hasSubscription ? (
-        // If subscribed, show a single action card (upgrade or manage)
-        currentPlan === "MONTHLY" && isActive ? (
-          // Monthly -> show upgrade to yearly with pro-rated estimate
-          <Card className="mb-8 border-primary shadow-lg">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-2xl flex items-center gap-2">
-                    <TrendingUp className="h-6 w-6 text-primary" />
-                    Upgrade to Yearly
-                  </CardTitle>
-                  <CardDescription className="mt-2">
-                    Save {pricingPlans[1].savings} and switch to annual billing.
-                  </CardDescription>
-                </div>
-                <Badge className="bg-primary text-primary-foreground">
-                  Best Value
-                </Badge>
+      {/* Compact Plan Duration card */}
+      {hasSubscription && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Plan Duration
+            </CardTitle>
+            <CardDescription>Switch billing cycle</CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center justify-between gap-4">
+            <div>
+              <div className="text-lg font-semibold">
+                {currentPlan === "YEARLY" ? "Yearly plan" : "Monthly plan"}
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-bold">
-                  {pricingPlans[1].price}
-                </span>
-                <span className="text-muted-foreground">
-                  {pricingPlans[1].period}
-                </span>
-                <span className="ml-4 text-sm text-green-600 font-medium">
-                  {pricingPlans[1].savings}
-                </span>
+              <div className="text-sm text-muted-foreground">
+                {currentPlan === "MONTHLY"
+                  ? "Save with annual billing"
+                  : "Managed via Stripe"}
               </div>
-              <Separator />
-              <ul className="space-y-2">
-                {pricingPlans[1].features.map((feature, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                    <span className="text-sm">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {/* Calculate a simple pro-rated upgrade amount based on time left */}
-              <UpgradeCostSummary
-                subscriptionEndsAt={billing?.subscriptionEndsAt}
-                monthlyPrice={pricingPlans[0].priceNumber}
-                yearlyPrice={pricingPlans[1].priceNumber}
-              />
-
+            </div>
+            {currentPlan === "MONTHLY" && isActive && (
               <Button
-                className="w-full"
-                size="lg"
                 onClick={() => handleSubscribe("YEARLY")}
                 disabled={actionLoading}
-                data-testid="upgrade-to-yearly-button"
+              >
+                {actionLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Upgrade to Yearly
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Option Capacity card */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Gauge className="h-5 w-5" />
+            Option Capacity
+          </CardTitle>
+          <CardDescription>
+            Included 10 options under primary categories
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {loadingUsage ? (
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : usage ? (
+            <>
+              <div className="text-sm">
+                {usage.used} / {usage.included} used{" "}
+                {usage.limitReached ? (
+                  <span className="text-red-600 ml-2">Limit reached</span>
+                ) : usage.remaining <= 2 ? (
+                  <span className="text-amber-600 ml-2">
+                    You&apos;re close to the limit
+                  </span>
+                ) : null}
+              </div>
+              <Button
+                className="w-full"
+                variant={
+                  usage.limitReached || usage.remaining <= 2
+                    ? "default"
+                    : "outline"
+                }
+                onClick={handleAddOptionsBlock}
+                disabled={actionLoading}
               >
                 {actionLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Loading...
+                    Processing...
                   </>
                 ) : (
-                  "Upgrade to Yearly"
+                  "Add +10 options for €10"
                 )}
               </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          // Yearly subscribers or other subscribed states: show current plan summary + manage button
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                Current Plan
-              </CardTitle>
-              <CardDescription>Your active subscription</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-lg font-semibold">
-                    {currentPlan === "YEARLY" ? "Yearly Plan" : "Monthly Plan"}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {billing?.subscriptionEndsAt
-                      ? `Renews on ${new Date(billing.subscriptionEndsAt).toLocaleDateString()}`
-                      : "Managed via Stripe"}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleManageBilling}
-                    disabled={actionLoading}
-                  >
-                    Manage Billing
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )
-      ) : (
-        // Not subscribed: show both plans for selection
-        <div className="grid gap-6 md:grid-cols-2 mb-8">
-          {pricingPlans.map((plan) => (
-            <Card
-              key={plan.duration}
-              className={`relative ${
-                plan.duration === "YEARLY" ? "border-primary shadow-lg" : ""
-              }`}
-              data-testid={`pricing-plan-${plan.duration.toLowerCase()}`}
-            >
-              {plan.duration === "YEARLY" && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <Badge className="bg-primary text-primary-foreground">
-                    Most Popular
-                  </Badge>
-                </div>
-              )}
-              <CardHeader>
-                <div className="space-y-2">
-                  <CardTitle className="text-2xl">
-                    {plan.duration === "MONTHLY" ? "Monthly" : "Yearly"}
-                  </CardTitle>
-                  <div className="flex items-baseline gap-1">
-                    <span
-                      className="text-4xl font-bold"
-                      data-testid={`price-${plan.duration.toLowerCase()}`}
-                    >
-                      {plan.price}
-                    </span>
-                    <span className="text-muted-foreground">{plan.period}</span>
-                  </div>
-                  <CardDescription>{plan.description}</CardDescription>
-                  {plan.savings && (
-                    <Badge variant="secondary" className="text-xs">
-                      {plan.savings}
-                    </Badge>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Separator />
-                <ul className="space-y-3">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                      <span className="text-sm">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  className="w-full"
-                  size="lg"
-                  variant={plan.duration === "YEARLY" ? "default" : "outline"}
-                  onClick={() => handleSubscribe(plan.duration)}
-                  disabled={
-                    actionLoading || (currentPlan === plan.duration && isActive)
-                  }
-                  data-testid={`subscribe-button-${plan.duration.toLowerCase()}`}
-                >
-                  {currentPlan === plan.duration && isActive ? (
-                    "Current Plan"
-                  ) : actionLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    "Get Started"
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+              <p className="text-xs text-muted-foreground">
+                This increases your capacity for options under primary
+                categories.
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Usage information is unavailable.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Transaction History */}
       <Card className="mb-8">
@@ -737,34 +576,34 @@ export default function BillingPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {transactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
+                  {transactions.map((t) => (
+                    <TableRow key={t.id}>
                       <TableCell>
-                        {new Date(transaction.date).toLocaleDateString()}
+                        {new Date(t.date).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{transaction.planType}</Badge>
+                        <Badge variant="outline">{t.planType}</Badge>
                       </TableCell>
                       <TableCell>
-                        {transaction.currency} {transaction.amount.toFixed(2)}
+                        {t.currency} {t.amount.toFixed(2)}
                       </TableCell>
                       <TableCell>
                         <Badge
                           variant={
-                            transaction.status === "Paid"
+                            t.status === "Paid"
                               ? "default"
-                              : transaction.status === "Pending"
+                              : t.status === "Pending"
                                 ? "secondary"
                                 : "destructive"
                           }
                         >
-                          {transaction.status}
+                          {t.status}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        {transaction.invoicePdf && (
+                        {t.invoicePdf && (
                           <a
-                            href={transaction.invoicePdf}
+                            href={t.invoicePdf}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center text-sm text-primary hover:underline"
@@ -783,7 +622,7 @@ export default function BillingPage() {
         </CardContent>
       </Card>
 
-      {/* Help Section */}
+      {/* Help */}
       <Card>
         <CardHeader>
           <CardTitle>Need Help?</CardTitle>
@@ -797,8 +636,8 @@ export default function BillingPage() {
               className="text-primary hover:underline"
             >
               support@Konfigra.com
-            </a>{" "}
-            for any billing-related questions.
+            </a>
+            .
           </p>
         </CardContent>
       </Card>
@@ -809,19 +648,18 @@ export default function BillingPage() {
           <DialogHeader>
             <DialogTitle>Cancel Subscription</DialogTitle>
             <DialogDescription>
-              Are you sure you want to cancel your subscription?
+              Are you sure you want to cancel?
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Your subscription will remain active until{" "}
+                Your subscription remains active until{" "}
                 {billing?.subscriptionEndsAt
                   ? new Date(billing.subscriptionEndsAt).toLocaleDateString()
-                  : "the end of your billing period"}
-                , and you will not be charged again. No refunds will be issued
-                for the current billing period.
+                  : "the end of the billing period"}
+                .
               </AlertDescription>
             </Alert>
           </div>
