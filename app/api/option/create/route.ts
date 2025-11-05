@@ -32,7 +32,8 @@ export async function POST(request: NextRequest) {
     if (!categoryId || !label || price === undefined) {
       return fail(
         "Category ID, label, and price are required",
-        "VALIDATION_ERROR"
+        "VALIDATION_ERROR",
+        400
       );
     }
 
@@ -43,18 +44,17 @@ export async function POST(request: NextRequest) {
       return unauthorized("Invalid or expired edit token");
     }
 
-    // Verify category exists and belongs to the configurator in the token
+    // ✅ Verify category belongs to configurator & client
     const category = await prisma.category.findUnique({
       where: { id: categoryId },
       select: {
         id: true,
+        isPrimary: true,
         configurator: { select: { id: true, clientId: true } },
       },
     });
 
-    if (!category) {
-      return notFound("Category not found");
-    }
+    if (!category) return notFound("Category not found");
 
     if (
       category.configurator.id !== payload.configuratorId ||
@@ -63,6 +63,32 @@ export async function POST(request: NextRequest) {
       return unauthorized("Ownership mismatch");
     }
 
+    // ✅ Enforce one primary category limit is already elsewhere
+    // Here we enforce primary-option cap if adding to primary category
+
+    if (category.isPrimary) {
+      const totalPrimaryOptions = await prisma.option.count({
+        where: {
+          category: {
+            isPrimary: true,
+            configurator: {
+              clientId: payload.clientId,
+            },
+          },
+        },
+      });
+
+      // ✅ Hard stop at 10 options
+      if (totalPrimaryOptions >= 10) {
+        return fail(
+          "You hit your limit of 10 options. Please upgrade to add more.",
+          "PLAN_LIMIT",
+          403
+        );
+      }
+    }
+
+    // ✅ Create option
     const option = await OptionService.create(categoryId, {
       label,
       description,
