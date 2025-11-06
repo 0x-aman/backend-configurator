@@ -10,12 +10,20 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Code, Copy, CheckCircle2, ExternalLink, Settings } from "lucide-react";
+import {
+  Code,
+  Copy,
+  CheckCircle2,
+  ExternalLink,
+  Settings,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import type { ApiResponse } from "@/src/types/api";
+import { Skeleton } from "@/components/ui/skeleton";
 
-// Client-side env variables (replaced at build time by Next.js)
 const NEXT_PUBLIC_APP_URL = process.env.NEXT_PUBLIC_APP_URL || "";
 
 interface ClientInfo {
@@ -24,17 +32,28 @@ interface ClientInfo {
   domain: string | null;
 }
 
+interface Configurator {
+  id: string;
+  name: string;
+  description?: string;
+  publicId: string;
+}
+
 export default function EmbedPage() {
   const [client, setClient] = useState<ClientInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
-  const [publicId, setPublicId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [configurators, setConfigurators] = useState<Configurator[]>([]);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // ✅ Fetch client info using consistent endpoint
-        const clientRes = await fetch("/api/auth/me");
+        const [clientRes, listRes] = await Promise.all([
+          fetch("/api/auth/me"),
+          fetch("/api/configurator/list"),
+        ]);
+
         if (clientRes.ok) {
           const result: ApiResponse = await clientRes.json();
           if (result.success && result.data) {
@@ -46,18 +65,19 @@ export default function EmbedPage() {
           }
         }
 
-        // Fetch configurators list
-        const listRes = await fetch("/api/configurator/list");
         if (listRes.ok) {
           const listJson: ApiResponse = await listRes.json();
-          const configs = listJson?.data || [];
-          if (configs.length > 0) {
-            setPublicId(configs[0].publicId);
+          const data = listJson?.data || [];
+          setConfigurators(data);
+
+          // auto-expand if <3
+          if (data.length && data.length < 3) {
+            setExpandedIds(new Set(data.map((cfg: any) => cfg.id)));
           }
         }
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-        toast.error("Failed to load configurator data");
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load data");
       } finally {
         setLoading(false);
       }
@@ -66,36 +86,26 @@ export default function EmbedPage() {
     fetchData();
   }, []);
 
-  const embedScript = `<!-- Konfigra Configurator Embed -->
-<div id="Konfigra-configurator"></div>
-<script>
-  (function() {
-    var script = document.createElement('script');
-    script.src = '${NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "")}/embed.js';
-    script.setAttribute('data-public-key', '${client?.publicKey || "YOUR_PUBLIC_KEY"}');
-    script.async = true;
-    document.body.appendChild(script);
-  })();
-</script>`;
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(embedScript);
-    setCopied(true);
-    toast.success("Embed script copied to clipboard!");
-    setTimeout(() => setCopied(false), 2000);
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) newSet.delete(id);
+      else newSet.add(id);
+      return newSet;
+    });
   };
 
-  const handleManageConfigurator = async () => {
+  const copyCode = async (text: string, id: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    toast.success("Embed script copied");
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleManageConfigurator = async (publicId: string) => {
     try {
-      toast.dismiss();
       toast.loading("Opening editor...");
 
-      if (!publicId) {
-        toast.error("No configurator found");
-        return;
-      }
-
-      // get edit token
       const tokenRes = await fetch("/api/configurator/generate-edit-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -103,24 +113,21 @@ export default function EmbedPage() {
       });
 
       if (!tokenRes.ok) {
-        const err = await tokenRes.json().catch(() => ({}));
-        toast.error(err?.message || "Failed to create edit token");
+        toast.error("Failed to create edit token");
         return;
       }
 
       const tokenJson = await tokenRes.json();
-      const token = tokenJson?.data?.token || tokenJson?.token;
+      const token = tokenJson?.data?.token;
       if (!token) {
         toast.error("No token returned");
         return;
       }
 
-      const VITE_HOST_PROD = "https://exact-dupe-engine.vercel.app";
-      const VITE_HOST_LOCAL = "http://localhost:8080";
       const host =
         window.location.hostname === "localhost"
-          ? VITE_HOST_LOCAL
-          : VITE_HOST_PROD;
+          ? "http://localhost:8080"
+          : "https://exact-dupe-engine.vercel.app";
 
       const url = `${host}/?admin=true&token=${encodeURIComponent(token)}`;
       window.open(url, "_blank");
@@ -133,70 +140,110 @@ export default function EmbedPage() {
     }
   };
 
+  if (loading)
+    return (
+      <div className="p-6 lg:p-8 max-w-4xl space-y-6">
+        {[...Array(3)].map((_, i) => (
+          <Card key={i} className="p-6 space-y-3">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </Card>
+        ))}
+      </div>
+    );
+
   return (
     <div className="p-6 lg:p-8">
-      <div className="mb-8">
-        <h1
-          className="text-3xl font-bold tracking-tight"
-          data-testid="embed-title"
-        >
-          Embed Script
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Integrate your configurator into any website
-        </p>
-      </div>
+      <h1 className="text-3xl font-bold tracking-tight mb-2">Embed Script</h1>
+      <p className="text-muted-foreground mb-8">
+        Integrate your configurators into any website.
+      </p>
 
       <div className="grid gap-6 max-w-4xl">
-        {/* Quick Start */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Code className="h-5 w-5" />
-              Quick Start
-            </CardTitle>
-            <CardDescription>
-              Copy and paste this script into your website
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert>
-              <AlertDescription>
-                Paste this code snippet where you want the configurator to
-                appear on your website.
-              </AlertDescription>
-            </Alert>
+        {/* Configurators */}
+        {configurators.map((cfg) => {
+          const embedScript = `<!-- Konfigra Configurator: ${cfg.name} -->
+<div id="konfigra-${cfg.publicId}"></div>
+<script>
+  (function() {
+    var script = document.createElement('script');
+    script.src = '${NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "")}/embed.js';
+    script.setAttribute('data-public-key', '${client?.publicKey}');
+    script.setAttribute('data-configurator-id', '${cfg.publicId}');
+    script.async = true;
+    document.body.appendChild(script);
+  })();
+</script>`;
 
-            <div className="relative">
-              <pre
-                className="p-4 bg-gray-900 text-gray-100 rounded-lg overflow-x-auto text-sm font-mono"
-                data-testid="embed-script"
-              >
-                <code>{embedScript}</code>
-              </pre>
-              <Button
-                size="sm"
-                variant="secondary"
-                className="absolute top-2 right-2"
-                onClick={copyToClipboard}
-                data-testid="copy-embed-button"
-              >
-                {copied ? (
-                  <>
-                    <CheckCircle2 className="h-4 w-4 mr-1" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4 mr-1" />
-                    Copy
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          const expanded = expandedIds.has(cfg.id);
 
+          return (
+            <Card key={cfg.id}>
+              <CardHeader className="flex items-center justify-between">
+                <div>
+                  <CardTitle>{cfg.name}</CardTitle>
+                  <CardDescription>
+                    {cfg.description || "No description provided."}
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      window.open(
+                        `http://localhost:8080/?apiKey=${cfg.publicId}`,
+                        "_blank"
+                      )
+                    }
+                  >
+                    <ExternalLink className="h-4 w-4 mr-1" />
+                    Preview
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => handleManageConfigurator(cfg.publicId)}
+                  >
+                    <Settings className="h-4 w-4 mr-1" />
+                    Manage
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => toggleExpand(cfg.id)}
+                  >
+                    {expanded ? <ChevronUp /> : <ChevronDown />}
+                  </Button>
+                </div>
+              </CardHeader>
+
+              {expanded && (
+                <CardContent className="relative">
+                  <pre className="p-4 bg-gray-900 text-gray-100 rounded-lg overflow-x-auto text-xs font-mono">
+                    {embedScript}
+                  </pre>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="absolute top-2 right-2"
+                    onClick={() => copyCode(embedScript, cfg.id)}
+                  >
+                    {copiedId === cfg.id ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-1" /> Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-1" /> Copy
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              )}
+            </Card>
+          );
+        })}
         {/* API Keys */}
         <Card>
           <CardHeader>
@@ -206,106 +253,48 @@ export default function EmbedPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
+            <div>
               <label className="text-sm font-medium">Public Key</label>
-              <div className="flex gap-2">
-                <code
-                  className="flex-1 p-3 bg-muted rounded-md text-sm font-mono break-all"
-                  data-testid="public-key"
-                >
-                  {loading
-                    ? "Loading..."
-                    : client?.publicKey || "Not available"}
+              <div className="flex gap-2 mt-1">
+                <code className="flex-1 p-3 bg-muted rounded-md text-sm break-all">
+                  {client?.publicKey || "Not available"}
                 </code>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => {
                     navigator.clipboard.writeText(client?.publicKey || "");
-                    toast.success("Public key copied!");
+                    toast.success("Public key copied");
                   }}
-                  disabled={!client?.publicKey}
-                  data-testid="copy-public-key"
                 >
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Use this key for public embed scripts
-              </p>
             </div>
 
-            <div className="space-y-2">
+            <div>
               <label className="text-sm font-medium">API Key (Secret)</label>
-              <div className="flex gap-2">
-                <code
-                  className="flex-1 p-3 bg-muted rounded-md text-sm font-mono break-all"
-                  data-testid="api-key"
-                >
-                  {loading ? "Loading..." : client?.apiKey || "Not available"}
+              <div className="flex gap-2 mt-1">
+                <code className="flex-1 p-3 bg-muted rounded-md text-sm break-all">
+                  {client?.apiKey || "Not available"}
                 </code>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    if (client?.apiKey) {
-                      navigator.clipboard.writeText(client.apiKey);
-                      toast.success("API key copied!");
-                    }
+                    navigator.clipboard.writeText(client?.apiKey || "");
+                    toast.success("API key copied");
                   }}
-                  disabled={!client?.apiKey}
-                  data-testid="copy-api-key"
                 >
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Keep this secret! Use for backend API calls only
+              <p className="text-xs text-muted-foreground mt-1">
+                Keep this secret. Use only for backend API calls.
               </p>
             </div>
           </CardContent>
         </Card>
-
-        {/* Configurator Management */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              Configurator Management
-            </CardTitle>
-            <CardDescription>
-              Create and customize your product configurators
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Configure your product options, categories, pricing, and themes
-              using our configurator editor.
-            </p>
-            <div className="flex gap-4">
-              <Button
-                data-testid="manage-configurator-button"
-                onClick={handleManageConfigurator}
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Manage Configurator
-              </Button>
-
-              <Button variant="outline" asChild disabled={!publicId}>
-                <Link
-                  href={
-                    publicId ? `http://localhost:8080/?apiKey=${publicId}` : "#"
-                  }
-                  target="_blank"
-                >
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  Preview
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Documentation */}
         <Card>
           <CardHeader>
@@ -357,6 +346,7 @@ export default function EmbedPage() {
             </div>
           </CardContent>
         </Card>
+        ;
       </div>
     </div>
   );

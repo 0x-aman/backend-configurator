@@ -64,7 +64,7 @@ export async function POST(req: Request) {
       type: "configurator_edit",
     } as const;
 
-    const token = sign(payload, secret, { expiresIn: "30m" });
+    const token = sign(payload, secret, { expiresIn: "1h" });
 
     return success({ token });
   } catch (err) {

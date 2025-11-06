@@ -10,6 +10,7 @@ import {
 } from "@/src/lib/response";
 import { verifyEditToken } from "@/src/lib/verify-edit-token";
 import { prisma } from "@/src/lib/prisma";
+import { countPrimaryOptionsForClient } from "@/src/lib/usage";
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,21 +68,23 @@ export async function POST(request: NextRequest) {
     // Here we enforce primary-option cap if adding to primary category
 
     if (category.isPrimary) {
-      const totalPrimaryOptions = await prisma.option.count({
-        where: {
-          category: {
-            isPrimary: true,
-            configurator: {
-              clientId: payload.clientId,
-            },
-          },
-        },
+      const totalPrimaryOptions = await countPrimaryOptionsForClient(
+        payload.clientId
+      );
+
+      // Fetch purchased blocks
+      const usage = await prisma.billingUsage.findUnique({
+        where: { clientId: payload.clientId },
+        select: { chargedBlocks: true },
       });
 
-      // ✅ Hard stop at 10 options
-      if (totalPrimaryOptions >= 10) {
+      const baseLimit = 10;
+      const extraLimit = (usage?.chargedBlocks ?? 0) * 10;
+      const limit = baseLimit + extraLimit;
+
+      if (totalPrimaryOptions >= limit) {
         return fail(
-          "You hit your limit of 10 options. Please upgrade to add more.",
+          `You reached your limit of ${limit} options. Upgrade to add more.`,
           "PLAN_LIMIT",
           403
         );
