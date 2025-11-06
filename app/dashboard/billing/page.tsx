@@ -27,6 +27,8 @@ import {
   XCircle,
   Gauge,
   Clock,
+  AlertTriangle,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
@@ -65,6 +67,7 @@ export default function BillingPage() {
   const [billing, setBilling] = useState<BillingInfo | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [usage, setUsage] = useState<Usage | null>(null);
+  const [configurators, setConfigurators] = useState<any[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
@@ -125,10 +128,19 @@ export default function BillingPage() {
   const fetchUsage = useCallback(async () => {
     try {
       setLoadingUsage(true);
-      const res = await fetch("/api/billing/usage", { cache: "no-store" });
-      if (!res.ok) throw new Error(`Usage fetch failed: ${res.status}`);
-      const data: Usage = await res.json();
+      const [usageRes, configsRes] = await Promise.all([
+        fetch("/api/billing/usage", { cache: "no-store" }),
+        fetch("/api/configurator/list", { cache: "no-store" }),
+      ]);
+      if (!usageRes.ok)
+        throw new Error(`Usage fetch failed: ${usageRes.status}`);
+      const data: Usage = await usageRes.json();
       setUsage(data);
+
+      if (configsRes.ok) {
+        const json: ApiResponse = await configsRes.json();
+        setConfigurators(json?.data || []);
+      }
     } catch (e: any) {
       console.warn("Usage not available:", e?.message || e);
       setUsage(null);
@@ -323,6 +335,37 @@ export default function BillingPage() {
     }
   };
 
+  function ConfiguratorUsageSummary({
+    configurators,
+  }: {
+    configurators: any[];
+  }) {
+    if (!configurators.length)
+      return (
+        <p className="text-xs text-muted-foreground">No configurators found.</p>
+      );
+
+    return (
+      <div className="border rounded-md p-3 bg-muted/30">
+        <p className="text-xs font-medium text-muted-foreground mb-2">
+          Breakdown by configurator:
+        </p>
+        <ul className="space-y-1 text-sm">
+          {configurators.map((cfg) => (
+            <li key={cfg.id} className="flex justify-between">
+              <span className="truncate">
+                {cfg.name || "Untitled Configurator"}
+              </span>
+              <span className="text-muted-foreground">
+                {cfg.optionCount ?? 0} options
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
   const isActive = billing?.subscriptionStatus === "ACTIVE";
   const isCanceled = billing?.subscriptionStatus === "CANCELED";
   const hasSubscription = isActive || isCanceled;
@@ -493,7 +536,7 @@ export default function BillingPage() {
             Included 10 options under primary categories
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
           {loadingUsage ? (
             <div className="space-y-2">
               <Skeleton className="h-4 w-40" />
@@ -511,6 +554,34 @@ export default function BillingPage() {
                   </span>
                 ) : null}
               </div>
+
+              {/* === NEW: Per-configurator summary === */}
+              <ConfiguratorUsageSummary configurators={configurators} />
+              {usage.limitReached && (
+                <div className="flex flex-col gap-2">
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      You&apos;ve reached the included option limit. Purchase
+                      additional capacity to continue adding options.
+                    </AlertDescription>
+                  </Alert>
+                  <Button
+                    variant="default"
+                    onClick={handleAddOptionsBlock}
+                    disabled={actionLoading}
+                    data-testid="upgrade-button"
+                  >
+                    {actionLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Plus className="mr-2 h-4 w-4" />
+                    )}
+                    Add +10 Options Block
+                  </Button>
+                </div>
+              )}
+
               <Button
                 className="w-full"
                 variant={
