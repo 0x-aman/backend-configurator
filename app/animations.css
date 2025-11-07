@@ -1,0 +1,13 @@
+@keyframes loader {
+  0%,
+  100% {
+    left: 0%;
+  }
+  50% {
+    left: 67%;
+  }
+}
+
+.animate-loader {
+  animation: loader 1.2s ease-in-out infinite;
+}
