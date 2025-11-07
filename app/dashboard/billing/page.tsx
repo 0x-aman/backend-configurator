@@ -496,7 +496,7 @@ export default function BillingPage() {
 
   function UpgradeSection() {
     return (
-      <Card className="mb-8 border-amber-200 bg-amber-50 dark:bg-amber-950 dark:border-amber-900">
+      <Card className="mb-8 bg-primary/20 border-primary/60">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-amber-600" />
@@ -525,7 +525,7 @@ export default function BillingPage() {
                 Switch to Yearly
               </Button>
             )}
-            <Button onClick={handleAddOptionsBlock} variant="outline">
+            <Button onClick={handleAddOptionsBlock}>
               <Plus className="mr-2 h-4 w-4" />
               Add +10 Options
             </Button>
