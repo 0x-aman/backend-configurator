@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DashboardLoading } from "@/components/dashboard-loading";
 import {
   Card,
   CardContent,
@@ -140,18 +141,9 @@ export default function EmbedPage() {
     }
   };
 
-  if (loading)
-    return (
-      <div className="p-6 lg:p-8 max-w-4xl space-y-6">
-        {[...Array(3)].map((_, i) => (
-          <Card key={i} className="p-6 space-y-3">
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-20 w-full" />
-          </Card>
-        ))}
-      </div>
-    );
+  if (loading) {
+    return <DashboardLoading />;
+  }
 
   return (
     <div className="p-6 lg:p-8">

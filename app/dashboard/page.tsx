@@ -2,6 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { DashboardLoading } from "@/components/dashboard-loading";
 import {
   Card,
   CardContent,
@@ -156,6 +157,10 @@ export default function DashboardPage() {
     }
     return "Inactive";
   };
+
+  if (loading) {
+    return <DashboardLoading />;
+  }
 
   return (
     <div className="p-6 lg:p-8">

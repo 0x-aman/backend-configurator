@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardLoading } from "@/components/dashboard-loading";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -65,7 +72,8 @@ export default function QuotesPage() {
       quote.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       quote.quoteCode.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === "ALL" || quote.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "ALL" || quote.status === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
@@ -93,10 +101,19 @@ export default function QuotesPage() {
     toast.info("Quote download feature coming soon!");
   };
 
+  if (loading) {
+    return <DashboardLoading />;
+  }
+
   return (
     <div className="p-6 lg:p-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight" data-testid="quotes-title">Quotes</h1>
+        <h1
+          className="text-3xl font-bold tracking-tight"
+          data-testid="quotes-title"
+        >
+          Quotes
+        </h1>
         <p className="text-muted-foreground mt-2">
           View and manage all your customer quotes
         </p>
@@ -110,7 +127,12 @@ export default function QuotesPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="total-quotes-count">{quotes.length}</div>
+            <div
+              className="text-2xl font-bold"
+              data-testid="total-quotes-count"
+            >
+              {quotes.length}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -119,7 +141,10 @@ export default function QuotesPage() {
             <FileText className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="pending-quotes-count">
+            <div
+              className="text-2xl font-bold"
+              data-testid="pending-quotes-count"
+            >
               {quotes.filter((q) => q.status === "PENDING").length}
             </div>
           </CardContent>
@@ -130,7 +155,10 @@ export default function QuotesPage() {
             <FileText className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="accepted-quotes-count">
+            <div
+              className="text-2xl font-bold"
+              data-testid="accepted-quotes-count"
+            >
               {quotes.filter((q) => q.status === "ACCEPTED").length}
             </div>
           </CardContent>
@@ -142,7 +170,10 @@ export default function QuotesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="total-value">
-              €{quotes.reduce((sum, q) => sum + Number(q.totalPrice), 0).toFixed(2)}
+              €
+              {quotes
+                .reduce((sum, q) => sum + Number(q.totalPrice), 0)
+                .toFixed(2)}
             </div>
           </CardContent>
         </Card>
@@ -166,7 +197,10 @@ export default function QuotesPage() {
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]" data-testid="status-filter">
+              <SelectTrigger
+                className="w-full sm:w-[180px]"
+                data-testid="status-filter"
+              >
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
@@ -187,7 +221,8 @@ export default function QuotesPage() {
         <CardHeader>
           <CardTitle>All Quotes</CardTitle>
           <CardDescription>
-            {filteredQuotes.length} {filteredQuotes.length === 1 ? "quote" : "quotes"} found
+            {filteredQuotes.length}{" "}
+            {filteredQuotes.length === 1 ? "quote" : "quotes"} found
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -223,19 +258,33 @@ export default function QuotesPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredQuotes.map((quote) => (
-                    <TableRow key={quote.id} data-testid={`quote-row-${quote.quoteCode}`}>
-                      <TableCell className="font-mono text-sm" data-testid="quote-code">
+                    <TableRow
+                      key={quote.id}
+                      data-testid={`quote-row-${quote.quoteCode}`}
+                    >
+                      <TableCell
+                        className="font-mono text-sm"
+                        data-testid="quote-code"
+                      >
                         {quote.quoteCode}
                       </TableCell>
                       <TableCell data-testid="customer-name">
                         {quote.customerName || "—"}
                       </TableCell>
-                      <TableCell data-testid="customer-email">{quote.customerEmail}</TableCell>
-                      <TableCell className="font-semibold" data-testid="quote-amount">
+                      <TableCell data-testid="customer-email">
+                        {quote.customerEmail}
+                      </TableCell>
+                      <TableCell
+                        className="font-semibold"
+                        data-testid="quote-amount"
+                      >
                         €{Number(quote.totalPrice).toFixed(2)}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={getStatusVariant(quote.status)} data-testid="quote-status">
+                        <Badge
+                          variant={getStatusVariant(quote.status)}
+                          data-testid="quote-status"
+                        >
                           {quote.status}
                         </Badge>
                       </TableCell>

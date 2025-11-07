@@ -2,6 +2,7 @@
 
 import { useSession, signIn } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { DashboardLoading } from "@/components/dashboard-loading";
 import {
   Card,
   CardContent,
@@ -407,11 +408,7 @@ export default function AccountPage() {
   };
 
   if (loading.fetching) {
-    return (
-      <div className="p-6 lg:p-8 flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <DashboardLoading />;
   }
 
   return (
