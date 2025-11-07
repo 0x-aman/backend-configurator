@@ -20,7 +20,13 @@ export async function createCheckoutSession({
   return await stripe.checkout.sessions.create({
     customer: customerId,
     mode: "subscription",
-    payment_method_types: ["card"],
+    payment_method_types: ["card", "paypal"],
+
+    payment_method_options: {
+      card: {
+        setup_future_usage: "off_session",
+      },
+    },
     line_items: [
       {
         price: priceId,
