@@ -66,16 +66,21 @@ export async function POST(request: NextRequest) {
                 },
               });
 
+              // Log the transaction in audit
               await prisma.auditBillingEvent.create({
                 data: {
                   clientId: client.id,
                   event: "OPTION_BLOCK_PURCHASED",
-                  details: { sessionId: session.id },
+                  details: {
+                    sessionId: session.id,
+                    paymentIntentId: session.payment_intent,
+                    amount: session.amount_total,
+                  },
                 },
               });
 
               console.log(
-                `[Billing] +10 options added for client ${client.id} — now storing usage.`
+                `[Billing] +10 options added for client ${client.id} — transaction logged.`
               );
             }
           }

@@ -21,12 +21,6 @@ export async function createCheckoutSession({
     customer: customerId,
     mode: "subscription",
     payment_method_types: ["card", "paypal"],
-
-    payment_method_options: {
-      card: {
-        setup_future_usage: "off_session",
-      },
-    },
     line_items: [
       {
         price: priceId,

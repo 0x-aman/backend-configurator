@@ -60,6 +60,103 @@ export const BillingService = {
     return session;
   },
 
+  async createUpgradeCheckoutSession(
+    clientId: string,
+    currentClient: {
+      subscriptionEndsAt: Date | null;
+      stripeSubscriptionId: string;
+    },
+    successUrl: string,
+    cancelUrl: string
+  ) {
+    const client = await ClientService.getById(clientId);
+
+    if (!client.stripeCustomerId) {
+      throw new Error("No Stripe customer found");
+    }
+
+    // Calculate proration
+    const now = new Date();
+    const periodEnd = currentClient.subscriptionEndsAt!;
+    const totalDaysInMonth = 30; // Approximate
+    const daysRemaining = Math.max(
+      0,
+      Math.ceil((periodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    );
+    const daysUsed = totalDaysInMonth - daysRemaining;
+
+    // Calculate remaining credit
+    const monthlyPrice = 99; // €99
+    const yearlyPrice = 999; // €999
+    const dailyMonthlyRate = monthlyPrice / totalDaysInMonth;
+    const remainingCredit = Math.max(0, daysRemaining * dailyMonthlyRate);
+
+    // Amount to charge = yearly price - remaining credit
+    const amountToCharge = Math.max(
+      0,
+      Math.round((yearlyPrice - remainingCredit) * 100)
+    ); // in cents
+
+    console.log("Upgrade proration calculation:", {
+      daysUsed,
+      daysRemaining,
+      remainingCredit: remainingCredit.toFixed(2),
+      amountToCharge: (amountToCharge / 100).toFixed(2),
+    });
+
+    // Cancel the current monthly subscription immediately
+    try {
+      await stripe.subscriptions.update(currentClient.stripeSubscriptionId, {
+        cancel_at_period_end: false,
+        proration_behavior: "none",
+      });
+      await stripe.subscriptions.cancel(currentClient.stripeSubscriptionId);
+    } catch (err) {
+      console.warn("Failed to cancel existing subscription:", err);
+    }
+
+    // Create a new yearly subscription checkout with prorated amount
+    const yearlyPriceId =
+      env.STRIPE_YEARLY_PRICE_ID || (await createOrGetPrice("year", 99900));
+
+    // Create checkout session with custom amount if prorated
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: client.stripeCustomerId,
+      line_items: [
+        {
+          price: yearlyPriceId,
+          quantity: 1,
+        },
+      ],
+      subscription_data: {
+        metadata: {
+          upgrade_from: "MONTHLY",
+          prorated_credit: remainingCredit.toFixed(2),
+          original_subscription: currentClient.stripeSubscriptionId,
+        },
+      },
+      discounts:
+        remainingCredit > 0
+          ? [
+              {
+                coupon: await createProrationCoupon(
+                  Math.round(remainingCredit * 100)
+                ),
+              },
+            ]
+          : undefined,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: {
+        clientId: clientId,
+        upgrade: "true",
+      },
+    });
+
+    return session;
+  },
+
   async createPortalSession(clientId: string, returnUrl: string) {
     const client = await ClientService.getById(clientId);
 
@@ -223,5 +320,21 @@ async function createOrGetPrice(
     console.error("Failed to create price:", error);
     // Fallback to dummy price IDs
     return interval === "month" ? "price_monthly" : "price_yearly";
+  }
+}
+
+// Helper to create a one-time coupon for proration
+async function createProrationCoupon(amountOff: number): Promise<string> {
+  try {
+    const coupon = await stripe.coupons.create({
+      amount_off: amountOff,
+      currency: "eur",
+      duration: "once",
+      name: "Upgrade Credit",
+    });
+    return coupon.id;
+  } catch (error) {
+    console.error("Failed to create proration coupon:", error);
+    throw error;
   }
 }
