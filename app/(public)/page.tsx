@@ -16,6 +16,7 @@ import {
   Check,
 } from "lucide-react";
 import Image from "next/image";
+import UserWidget from "@/components/user-widget";
 
 export default function LandingPage() {
   const { data: session } = useSession();
@@ -71,30 +72,7 @@ export default function LandingPage() {
               >
                 Pricing
               </Link>
-              {session ? (
-                <Link href="/dashboard">
-                  <Button size="sm" data-testid="nav-dashboard-button">
-                    Dashboard
-                  </Button>
-                </Link>
-              ) : (
-                <>
-                  <Link href="/login">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      data-testid="nav-login-button"
-                    >
-                      Log in
-                    </Button>
-                  </Link>
-                  <Link href="/register">
-                    <Button size="sm" data-testid="nav-signup-button">
-                      Get Started
-                    </Button>
-                  </Link>
-                </>
-              )}
+              <UserWidget />
             </div>
           </div>
         </div>
