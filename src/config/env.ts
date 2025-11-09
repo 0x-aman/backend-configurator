@@ -5,7 +5,7 @@ export const env = {
   DATABASE_URL: process.env.DATABASE_URL || "",
 
   // NextAuth
-  NEXTAUTH_URL: process.env.NEXTAUTH_URL || "http://localhost:3000",
+  NEXTAUTH_URL: process.env.NEXTAUTH_URL || "https://localhost:3000",
   NEXTAUTH_SECRET:
     process.env.NEXTAUTH_SECRET || "your-secret-key-change-in-production",
 
@@ -31,8 +31,8 @@ export const env = {
 
   // App
   APP_NAME: process.env.APP_NAME || "SaaS Configurator",
-  APP_URL: process.env.APP_URL || "http://localhost:3000",
-  FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:3000",
+  APP_URL: process.env.APP_URL || "https://localhost:3000",
+  FRONTEND_URL: process.env.FRONTEND_URL || "https://localhost:3000",
 
   // Rate Limiting
   RATE_LIMIT_MAX: parseInt(process.env.RATE_LIMIT_MAX || "100"),
@@ -45,7 +45,10 @@ export const env = {
   // ✅ Fixed: CORS with proper parsing
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
-    : ["http://localhost:3000"],
+    : [
+        "https://localhost:3000",
+        "https://product-configurator-frontend.netlify.app",
+      ],
   CORS_ORIGINS: process.env.CORS_ORIGINS || "*",
 
   // Environment

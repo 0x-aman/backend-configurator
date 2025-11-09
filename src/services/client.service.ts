@@ -57,6 +57,34 @@ export const ClientService = {
     return await prisma.client.findUnique({ where: { googleId } });
   },
 
+  // ✅ NEW: Get by public key (for embeds)
+  async getByPublicKey(publicKey: string): Promise<Client | null> {
+    return await prisma.client.findUnique({
+      where: { publicKey },
+    });
+  },
+
+  // ✅ NEW: Get by API key (for private API calls)
+  async getByApiKey(apiKey: string): Promise<Client | null> {
+    return await prisma.client.findUnique({
+      where: { apiKey },
+    });
+  },
+
+  // ✅ NEW: Check if given domain is allowed
+  async isDomainAllowed(clientId: string, origin: string): Promise<boolean> {
+    const client = await prisma.client.findUnique({
+      where: { id: clientId },
+      select: { allowedDomains: true },
+    });
+    if (!client) return false;
+
+    const originHost = new URL(origin).hostname;
+    return client.allowedDomains.some(
+      (domain) => originHost === domain || originHost.endsWith(`.${domain}`)
+    );
+  },
+
   async update(id: string, data: Partial<Client>): Promise<Client> {
     return await prisma.client.update({
       where: { id },
@@ -124,7 +152,7 @@ export const ClientService = {
     await prisma.client.delete({ where: { id } });
   },
 
-  // ✅ Fixed: Return only safe fields, no sensitive data
+  // ✅ Safe client for dashboard (no sensitive data)
   async getSafeClient(id: string) {
     const client = await this.getById(id);
 
@@ -140,7 +168,7 @@ export const ClientService = {
       subscriptionDuration: client.subscriptionDuration,
       subscriptionEndsAt: client.subscriptionEndsAt,
       trialEndsAt: client.trialEndsAt,
-      hasPassword: !!client.passwordHash, // Boolean instead of exposing hash
+      hasPassword: !!client.passwordHash,
       hasGoogleLinked: !!client.googleId,
       allowedDomains: client.allowedDomains,
       monthlyRequests: client.monthlyRequests,
@@ -148,7 +176,7 @@ export const ClientService = {
       createdAt: client.createdAt,
       lastLoginAt: client.lastLoginAt,
       stripeCustomerId: client.stripeCustomerId,
-      // ✅ Include these for embed/API management (needed in dashboard)
+      // Public identifiers for embeds/API
       publicKey: client.publicKey,
       apiKey: client.apiKey,
     };

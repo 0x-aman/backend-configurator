@@ -19,8 +19,9 @@ export async function middleware(request: NextRequest) {
   // ✅ Fixed: CORS with environment-based origins
   if (pathname.startsWith("/api")) {
     const allowedOrigins = env.ALLOWED_ORIGINS || [
-      "http://localhost:3000",
+      "https://localhost:3000",
       "http://localhost:8080",
+      "https://product-configurator-frontend.netlify.app", // ← allow your deployed frontend
     ];
     const corsResponse = applyCors(request, allowedOrigins);
     if (corsResponse) return corsResponse;

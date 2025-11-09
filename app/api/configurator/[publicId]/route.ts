@@ -11,34 +11,42 @@ export async function GET(
 ) {
   try {
     const { publicId } = await params;
-    const configurator = await ConfiguratorService.getByPublicId(publicId);
-    if (!configurator) {
-      const res = fail("Configurator not found.", "NOT_FOUND", 404);
+    const url = new URL(request.url);
+    const publicKey = url.searchParams.get("publicKey");
+
+    if (!publicKey) {
+      const res = fail("Missing client public key.", "MISSING_CLIENT_KEY", 400);
       return addCorsHeaders(res, request, ["*"]);
     }
 
-    const client = await ClientService.getById(configurator.clientId);
+    // Step 1: verify client
+    const client = await ClientService.getByPublicKey(publicKey);
     if (!client) {
-      const res = fail("Client not found.", "CLIENT_NOT_FOUND", 404);
+      const res = fail("Invalid client public key.", "CLIENT_NOT_FOUND", 404);
       return addCorsHeaders(res, request, ["*"]);
     }
 
-    const origin = request.headers.get("origin");
-    const allowed = client.allowedDomains || [];
-
-    // Case 1: no allowed domains configured
-    if (allowed.length === 0) {
-      const res = fail(
-        "No allowed domains configured. Please add your domain to allowed origins in your account settings.",
-        "NO_ALLOWED_ORIGINS",
-        403
-      );
+    // Step 2: check the origin (client’s actual website)
+    const embedOrigin = request.headers.get("x-embed-origin");
+    if (!embedOrigin) {
+      const res = fail("Missing origin header.", "MISSING_EMBED_ORIGIN", 400);
       return addCorsHeaders(res, request, ["*"]);
     }
 
-    // Case 2: origin not present or doesn't match
-    if (origin) {
-      const originHost = new URL(origin).hostname;
+    try {
+      const originHost = new URL(embedOrigin).hostname;
+      const allowed = client.allowedDomains || [];
+
+      // No configured domains → block to force setup
+      if (allowed.length === 0) {
+        const res = fail(
+          "No allowed domains configured. Please add your domain to allowed origins in your account settings.",
+          "NO_ALLOWED_ORIGINS",
+          403
+        );
+        return addCorsHeaders(res, request, ["*"]);
+      }
+
       const isAllowed = allowed.some(
         (domain: string) =>
           originHost === domain || originHost.endsWith(`.${domain}`)
@@ -46,34 +54,53 @@ export async function GET(
 
       if (!isAllowed) {
         const res = fail(
-          `Origin mismatch. Your domain (${originHost}) is not in allowed origins. Please add it to your account settings.`,
+          `Unauthorized embed domain (${originHost}). Please add it to your allowed domains in account settings.`,
           "ORIGIN_MISMATCH",
           403
         );
-        return addCorsHeaders(res, request, allowed);
+        return addCorsHeaders(res, request, ["*"]);
       }
-    } else {
-      const res = fail("Missing Origin header.", "MISSING_ORIGIN", 400);
-      return addCorsHeaders(res, request, allowed);
+    } catch {
+      const res = fail("Invalid origin format.", "INVALID_ORIGIN", 400);
+      return addCorsHeaders(res, request, ["*"]);
     }
 
-    // Case 3: all good
+    // Step 3: find configurator belonging to this client
+    const configurator = await ConfiguratorService.getByPublicIdAndClientId(
+      publicId,
+      client.id
+    );
+
+    if (!configurator) {
+      const res = fail(
+        "Configurator not found for this client.",
+        "NOT_FOUND",
+        404
+      );
+      return addCorsHeaders(res, request, ["*"]);
+    }
+
+    // Step 4: success
     await ConfiguratorService.updateAccessedAt(configurator.id);
     const res = success(configurator);
-    return addCorsHeaders(res, request, allowed);
+    return addCorsHeaders(res, request, ["*"]);
   } catch (error: any) {
     const res = fail(error.message, "CONFIGURATOR_ERROR", 500);
     return addCorsHeaders(res, request, ["*"]);
   }
 }
-
 export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get("origin") || "*";
+  const reqHeaders =
+    request.headers.get("access-control-request-headers") || "";
+
   return new Response(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": request.headers.get("origin") || "*",
+      "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Headers": reqHeaders,
+      "Access-Control-Max-Age": "86400",
     },
   });
 }

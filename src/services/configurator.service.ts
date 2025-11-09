@@ -1,4 +1,4 @@
-// ConfiguratorService – Refactored Version
+// ConfiguratorService – Extended Version
 import { prisma } from "@/src/lib/prisma";
 import { slugify, uniqueSlug } from "@/src/utils/slugify";
 import { generateAccessToken } from "@/src/utils/id";
@@ -97,8 +97,7 @@ export const ConfiguratorService = {
   },
 
   /**
-   * List all configurators belonging to a client,
-   * returning lightweight data + computed counts.
+   * List all configurators belonging to a client.
    */
   async list(clientId: string) {
     const configurators = await prisma.configurator.findMany({
@@ -140,7 +139,6 @@ export const ConfiguratorService = {
 
   /**
    * Get configurator by publicId (for embeds).
-   * Throws if unpublished or missing.
    */
   async getByPublicId(publicId: string) {
     const configurator = await prisma.configurator.findUnique({
@@ -150,6 +148,22 @@ export const ConfiguratorService = {
     if (!configurator) throw new NotFoundError("Configurator");
     if (!configurator.isPublished)
       throw new AuthorizationError("Configurator not published");
+    return configurator;
+  },
+
+  /**
+   * ✅ NEW: Get configurator by publicId + clientId (used in embeds).
+   * Ensures the configurator actually belongs to that client.
+   */
+  async getByPublicIdAndClientId(publicId: string, clientId: string) {
+    const configurator = await prisma.configurator.findFirst({
+      where: { publicId, clientId, isPublished: true },
+      include: configuratorFullInclude,
+    });
+
+    if (!configurator) {
+      throw new NotFoundError("Configurator not found for this client");
+    }
 
     return configurator;
   },
@@ -167,7 +181,7 @@ export const ConfiguratorService = {
   },
 
   /**
-   * Update an existing configurator (name, theme, etc.).
+   * Update an existing configurator.
    */
   async update(
     id: string,
@@ -185,7 +199,7 @@ export const ConfiguratorService = {
   },
 
   /**
-   * Delete configurator and related data.
+   * Delete configurator.
    */
   async delete(id: string, clientId: string): Promise<void> {
     await this.verifyOwnership(id, clientId);
@@ -210,7 +224,7 @@ export const ConfiguratorService = {
   },
 
   /**
-   * Publish configurator (make visible via publicId).
+   * Publish configurator.
    */
   async publish(id: string, clientId: string) {
     return this.update(id, clientId, {
@@ -220,14 +234,14 @@ export const ConfiguratorService = {
   },
 
   /**
-   * Unpublish configurator (hide from public access).
+   * Unpublish configurator.
    */
   async unpublish(id: string, clientId: string) {
     return this.update(id, clientId, { isPublished: false });
   },
 
   /**
-   * Update last access timestamp (for analytics/tracking).
+   * Update last access timestamp (for analytics).
    */
   async updateAccessedAt(id: string): Promise<void> {
     await prisma.configurator.update({
@@ -237,7 +251,17 @@ export const ConfiguratorService = {
   },
 
   /**
-   * Helper to ensure configurator belongs to client.
+   * ✅ NEW: Quick existence check for rate limiting or validation.
+   */
+  async existsForClient(publicId: string, clientId: string): Promise<boolean> {
+    const count = await prisma.configurator.count({
+      where: { publicId, clientId },
+    });
+    return count > 0;
+  },
+
+  /**
+   * Helper: Ensure configurator belongs to client.
    */
   async verifyOwnership(id: string, clientId: string) {
     const cfg = await prisma.configurator.findUnique({
