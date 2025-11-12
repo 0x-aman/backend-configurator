@@ -1,8 +1,8 @@
 // Option service
-import { prisma } from '@/src/lib/prisma';
-import { NotFoundError } from '@/src/lib/errors';
-import type { Option } from '@prisma/client';
-import { Decimal } from '@prisma/client/runtime/library';
+import { prisma } from "@/src/lib/prisma";
+import { NotFoundError } from "@/src/lib/errors";
+import type { Option } from "@prisma/client";
+import { Decimal } from "@prisma/client/runtime/library";
 
 export const OptionService = {
   async create(
@@ -29,13 +29,13 @@ export const OptionService = {
   async list(categoryId: string): Promise<Option[]> {
     return await prisma.option.findMany({
       where: { categoryId },
-      orderBy: { orderIndex: 'asc' },
+      orderBy: { orderIndex: "asc" },
     });
   },
 
   async getById(id: string): Promise<Option> {
     const option = await prisma.option.findUnique({ where: { id } });
-    if (!option) throw new NotFoundError('Option');
+    if (!option) throw new NotFoundError("Option");
     return option;
   },
 
@@ -45,7 +45,7 @@ export const OptionService = {
     }
     return await prisma.option.update({
       where: { id },
-      data,
+      data: data as any,
     });
   },
 
@@ -63,7 +63,11 @@ export const OptionService = {
     await prisma.$transaction(updates);
   },
 
-  async addIncompatibility(optionId: string, incompatibleOptionId: string, message?: string): Promise<void> {
+  async addIncompatibility(
+    optionId: string,
+    incompatibleOptionId: string,
+    message?: string
+  ): Promise<void> {
     await prisma.optionIncompatibility.create({
       data: {
         optionId,
@@ -73,7 +77,10 @@ export const OptionService = {
     });
   },
 
-  async removeIncompatibility(optionId: string, incompatibleOptionId: string): Promise<void> {
+  async removeIncompatibility(
+    optionId: string,
+    incompatibleOptionId: string
+  ): Promise<void> {
     await prisma.optionIncompatibility.deleteMany({
       where: {
         optionId,
@@ -82,7 +89,11 @@ export const OptionService = {
     });
   },
 
-  async addDependency(optionId: string, dependsOnOptionId: string, type: string = 'requires'): Promise<void> {
+  async addDependency(
+    optionId: string,
+    dependsOnOptionId: string,
+    type: string = "requires"
+  ): Promise<void> {
     await prisma.optionDependency.create({
       data: {
         optionId,

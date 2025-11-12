@@ -480,7 +480,7 @@ export default function BillingPage() {
                   <ul className="space-y-2">
                     {plan.features.map((feature, idx) => (
                       <li key={idx} className="flex items-start gap-2 text-sm">
-                        <Check className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                        <Check className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
                         <span className="text-muted-foreground">{feature}</span>
                       </li>
                     ))}
@@ -551,10 +551,10 @@ export default function BillingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+    <div className="min-h-screen bg-linear-to-b from-background to-muted/20">
       <div className="p-6 lg:p-8 max-w-6xl">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/80">
+          <h1 className="text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-linear-to-r from-foreground to-foreground/80">
             Billing & Subscription
           </h1>
           <p className="text-lg text-muted-foreground mt-2">

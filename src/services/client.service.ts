@@ -88,7 +88,7 @@ export const ClientService = {
   async update(id: string, data: Partial<Client>): Promise<Client> {
     return await prisma.client.update({
       where: { id },
-      data,
+      data: data as any,
     });
   },
 
@@ -104,7 +104,7 @@ export const ClientService = {
   ): Promise<Client> {
     return await prisma.client.update({
       where: { id },
-      data,
+      data: data as any,
     });
   },
 

@@ -1,13 +1,9 @@
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import React, { FC } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 
-interface UserWidgetProps {
-  // Your prop types here
-}
-
-const UserWidget: FC<UserWidgetProps> = (props) => {
+const UserWidget: React.FC = () => {
   const { data: session } = useSession();
   return (
     <div className="flex gap-3">

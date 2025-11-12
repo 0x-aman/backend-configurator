@@ -1,8 +1,8 @@
 // Email client using Resend
-import { Resend } from 'resend';
-import { env } from '@/src/config/env';
+import { Resend } from "resend";
+import { env } from "@/src/config/env";
 
-export const resend = new Resend(env.RESEND_API_KEY || 're_dummy_key');
+export const resend = new Resend(env.RESEND_API_KEY || "re_dummy_key");
 
 export interface SendEmailParams {
   to: string | string[];
@@ -25,19 +25,22 @@ export async function sendEmail({
       to: Array.isArray(to) ? to : [to],
       subject,
       html,
-      reply_to: replyTo,
+      replyTo,
     });
     return { success: true, data: result };
   } catch (error) {
-    console.error('Email send error:', error);
+    console.error("Email send error:", error);
     return { success: false, error };
   }
 }
 
-export function renderEmailTemplate(template: string, variables: Record<string, any>): string {
+export function renderEmailTemplate(
+  template: string,
+  variables: Record<string, any>
+): string {
   let rendered = template;
   for (const [key, value] of Object.entries(variables)) {
-    const regex = new RegExp(`{{${key}}}`, 'g');
+    const regex = new RegExp(`{{${key}}}`, "g");
     rendered = rendered.replace(regex, String(value));
   }
   return rendered;

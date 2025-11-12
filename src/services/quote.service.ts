@@ -1,9 +1,9 @@
 // Quote service
-import { prisma } from '@/src/lib/prisma';
-import { generateQuoteCode } from '@/src/utils/id';
-import { NotFoundError } from '@/src/lib/errors';
-import type { Quote, QuoteStatus } from '@prisma/client';
-import { Decimal } from '@prisma/client/runtime/library';
+import { prisma } from "@/src/lib/prisma";
+import { generateQuoteCode } from "@/src/utils/id";
+import { NotFoundError } from "@/src/lib/errors";
+import type { Quote, QuoteStatus } from "@prisma/client";
+import { Decimal } from "@prisma/client/runtime/library";
 
 export const QuoteService = {
   async create(
@@ -45,10 +45,12 @@ export const QuoteService = {
       where: {
         clientId,
         ...(filters?.status && { status: filters.status }),
-        ...(filters?.configuratorId && { configuratorId: filters.configuratorId }),
+        ...(filters?.configuratorId && {
+          configuratorId: filters.configuratorId,
+        }),
         ...(filters?.customerEmail && { customerEmail: filters.customerEmail }),
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       include: {
         configurator: true,
       },
@@ -60,7 +62,7 @@ export const QuoteService = {
       where: { id },
       include: { configurator: true },
     });
-    if (!quote) throw new NotFoundError('Quote');
+    if (!quote) throw new NotFoundError("Quote");
     return quote;
   },
 
@@ -69,7 +71,7 @@ export const QuoteService = {
       where: { quoteCode },
       include: { configurator: true },
     });
-    if (!quote) throw new NotFoundError('Quote');
+    if (!quote) throw new NotFoundError("Quote");
     return quote;
   },
 
@@ -79,7 +81,7 @@ export const QuoteService = {
     }
     return await prisma.quote.update({
       where: { id },
-      data,
+      data: data as any,
     });
   },
 
@@ -94,7 +96,7 @@ export const QuoteService = {
     return await prisma.quote.update({
       where: { id },
       data: {
-        status: 'SENT',
+        status: "SENT",
         emailSentAt: new Date(),
       },
     });

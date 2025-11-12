@@ -1,38 +1,40 @@
 // Theme service
-import { prisma } from '@/src/lib/prisma';
-import { NotFoundError } from '@/src/lib/errors';
-import { DEFAULT_THEME } from '@/src/config/constants';
-import type { Theme } from '@prisma/client';
+import { prisma } from "@/src/lib/prisma";
+import { NotFoundError } from "@/src/lib/errors";
+import { DEFAULT_THEME } from "@/src/config/constants";
+import type { Theme } from "@prisma/client";
 
 export const ThemeService = {
   async create(clientId: string, data: Partial<Theme>): Promise<Theme> {
     return await prisma.theme.create({
       data: {
         clientId,
-        name: data.name || 'New Theme',
-        ...DEFAULT_THEME,
-        ...data,
-      },
+        // combine defaults with provided data; cast to any to avoid strict enum/type complaints
+        ...(DEFAULT_THEME as any),
+        ...(data as any),
+        name:
+          (data as any)?.name || (DEFAULT_THEME as any)?.name || "New Theme",
+      } as any,
     });
   },
 
   async list(clientId: string): Promise<Theme[]> {
     return await prisma.theme.findMany({
       where: { clientId, isActive: true },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   },
 
   async getById(id: string): Promise<Theme> {
     const theme = await prisma.theme.findUnique({ where: { id } });
-    if (!theme) throw new NotFoundError('Theme');
+    if (!theme) throw new NotFoundError("Theme");
     return theme;
   },
 
   async update(id: string, data: Partial<Theme>): Promise<Theme> {
     return await prisma.theme.update({
       where: { id },
-      data,
+      data: data as any,
     });
   },
 

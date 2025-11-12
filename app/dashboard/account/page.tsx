@@ -281,7 +281,6 @@ export default function AccountPage() {
       const callback = `${window.location.origin}/dashboard/account?linked=true`;
       // Use redirect: false so we control navigation and ensure the callbackUrl is respected
       // signIn will return an object containing the provider URL which we can navigate to.
-      // @ts-ignore - next-auth types for signIn return type can vary
       const res = await signIn("google", {
         callbackUrl: callback,
         redirect: false,
