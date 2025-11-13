@@ -42,14 +42,14 @@ export const env = {
   MONTHLY_PRICE: parseFloat(process.env.MONTHLY_PRICE || "99.00"),
   YEARLY_PRICE: parseFloat(process.env.YEARLY_PRICE || "999.00"),
 
-  // ✅ Fixed: CORS with proper parsing
-  ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+  // ✅ Centralized CORS Configuration
+  // Set to '*' for local development, or comma-separated domains for production
+  // Example: "https://my-app.com,https://dashboard.my-app.com,https://admin.my-app.com"
+  CORS_ALLOWED_ORIGINS: process.env.CORS_ALLOWED_ORIGINS
+    ? process.env.CORS_ALLOWED_ORIGINS.split(",").map((o) => o.trim())
     : [
-        "https://localhost:3000",
-        "https://product-configurator-frontend.netlify.app",
+        "*", // Allow all origins in development - change in production!
       ],
-  CORS_ORIGINS: process.env.CORS_ORIGINS || "*",
 
   // Environment
   NODE_ENV: process.env.NODE_ENV || "development",
@@ -80,6 +80,13 @@ export function validateEnv() {
     );
   }
 
+  // Warn about wildcard CORS in production
+  if (env.NODE_ENV === "production" && env.CORS_ALLOWED_ORIGINS.includes("*")) {
+    console.warn(
+      "⚠️  WARNING: CORS is set to allow all origins (*) in production. This is insecure! Set CORS_ALLOWED_ORIGINS to specific domains."
+    );
+  }
+
   // Warn about missing optional but important variables
   const optional = [
     "GOOGLE_CLIENT_ID",
@@ -101,6 +108,9 @@ export function validateEnv() {
   }
 
   console.log("✅ Environment variables validated successfully");
+  console.log(
+    `📍 CORS allowed origins: ${env.CORS_ALLOWED_ORIGINS.join(", ")}`
+  );
 }
 
 // Validate on import (only in Node.js environment)

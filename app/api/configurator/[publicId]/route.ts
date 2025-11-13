@@ -1,9 +1,9 @@
 // Get configurator by public ID (for embed)
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { ConfiguratorService } from "@/src/services/configurator.service";
 import { ClientService } from "@/src/services/client.service";
 import { success, fail } from "@/src/lib/response";
-import { addCorsHeaders } from "@/src/lib/cors";
+import { addCorsHeaders, handleCors } from "@/src/lib/cors";
 
 export async function GET(
   request: NextRequest,
@@ -90,17 +90,5 @@ export async function GET(
   }
 }
 export async function OPTIONS(request: NextRequest) {
-  const origin = request.headers.get("origin") || "*";
-  const reqHeaders =
-    request.headers.get("access-control-request-headers") || "";
-
-  return new Response(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": origin,
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": reqHeaders,
-      "Access-Control-Max-Age": "86400",
-    },
-  });
+  return handleCors(request) || new NextResponse(null, { status: 204 });
 }

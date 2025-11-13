@@ -16,14 +16,9 @@ export async function middleware(request: NextRequest) {
   });
   const { pathname } = request.nextUrl;
 
-  // ✅ Fixed: CORS with environment-based origins
+  // ✅ Apply CORS to all API routes using centralized configuration
   if (pathname.startsWith("/api")) {
-    const allowedOrigins = env.ALLOWED_ORIGINS || [
-      "https://localhost:3000",
-      "http://localhost:8080",
-      "https://product-configurator-frontend.netlify.app", // ← allow your deployed frontend
-    ];
-    const corsResponse = applyCors(request, allowedOrigins);
+    const corsResponse = applyCors(request);
     if (corsResponse) return corsResponse;
   }
 
