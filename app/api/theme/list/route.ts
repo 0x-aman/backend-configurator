@@ -1,16 +1,17 @@
 // List themes
 import { NextRequest } from 'next/server';
-import { authenticateRequest } from '@/src/middleware/auth';
+import { flexibleAuth } from '@/src/middleware/flexible-auth';
 import { ThemeService } from '@/src/services/theme.service';
-import { success, fail } from '@/src/lib/response';
+import { successWithCors, failWithCors } from '@/src/lib/response';
 
 export async function GET(request: NextRequest) {
   try {
-    const client = await authenticateRequest(request);
+    // ✅ Now accepts both session and token authentication
+    const { client } = await flexibleAuth(request);
     const themes = await ThemeService.list(client.id);
 
-    return success(themes);
+    return successWithCors(request, themes);
   } catch (error: any) {
-    return fail(error.message, 'LIST_ERROR', 500);
+    return failWithCors(request, error.message, 'LIST_ERROR', 500);
   }
 }

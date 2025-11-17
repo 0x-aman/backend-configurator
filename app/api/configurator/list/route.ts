@@ -1,16 +1,17 @@
 // List all configurators for client
 import { NextRequest } from 'next/server';
-import { authenticateRequest } from '@/src/middleware/auth';
+import { flexibleAuth } from '@/src/middleware/flexible-auth';
 import { ConfiguratorService } from '@/src/services/configurator.service';
-import { success, fail } from '@/src/lib/response';
+import { successWithCors, failWithCors } from '@/src/lib/response';
 
 export async function GET(request: NextRequest) {
   try {
-    const client = await authenticateRequest(request);
+    // ✅ Now accepts both session and token authentication
+    const { client } = await flexibleAuth(request);
     const configurators = await ConfiguratorService.list(client.id);
 
-    return success(configurators);
+    return successWithCors(request, configurators);
   } catch (error: any) {
-    return fail(error.message, 'LIST_ERROR', 500);
+    return failWithCors(request, error.message, 'LIST_ERROR', 500);
   }
 }
