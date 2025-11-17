@@ -62,11 +62,11 @@ async function trySessionAuth(): Promise<Client | null> {
 }
 
 /**
- * Try to authenticate using JWT edit token
+ * Try to authenticate using JWT edit token or API token
  */
 async function tryTokenAuth(
   request: NextRequest
-): Promise<{ client: Client; configuratorId: string } | null> {
+): Promise<{ client: Client; configuratorId?: string } | null> {
   try {
     // Check Authorization header
     const authHeader = request.headers.get("authorization");
@@ -79,6 +79,11 @@ async function tryTokenAuth(
     // Fallback to x-edit-token header
     if (!token) {
       token = request.headers.get("x-edit-token");
+    }
+
+    // Check x-api-token header (for external apps)
+    if (!token) {
+      token = request.headers.get("x-api-token");
     }
 
     if (!token) {
@@ -102,6 +107,14 @@ async function tryTokenAuth(
     // Check if account is locked
     if (client.lockedUntil && client.lockedUntil > new Date()) {
       throw new AuthenticationError("Account is locked");
+    }
+
+    // Check subscription status for API access
+    if (
+      client.subscriptionStatus === "CANCELED" ||
+      client.subscriptionStatus === "SUSPENDED"
+    ) {
+      throw new AuthenticationError("Subscription is not active");
     }
 
     return {

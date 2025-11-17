@@ -1,12 +1,12 @@
-// File upload
+// File upload with flexible authentication
 import { NextRequest } from 'next/server';
-import { authenticateRequest } from '@/src/middleware/auth';
+import { flexibleAuth } from '@/src/middleware/flexible-auth';
 import { FileService } from '@/src/services/file.service';
 import { success, fail, created } from '@/src/lib/response';
 
 export async function POST(request: NextRequest) {
   try {
-    const client = await authenticateRequest(request);
+    const { client } = await flexibleAuth(request);
     const formData = await request.formData();
 
     const file = formData.get('file') as File;
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 // Get signed upload URL for direct Azure Blob Storage upload
 export async function GET(request: NextRequest) {
   try {
-    const client = await authenticateRequest(request);
+    const { client } = await flexibleAuth(request);
     const { searchParams } = new URL(request.url);
 
     const filename = searchParams.get('filename');

@@ -1,12 +1,12 @@
-// List files
+// List files with flexible authentication
 import { NextRequest } from 'next/server';
-import { authenticateRequest } from '@/src/middleware/auth';
+import { flexibleAuth } from '@/src/middleware/flexible-auth';
 import { FileService } from '@/src/services/file.service';
 import { success, fail } from '@/src/lib/response';
 
 export async function GET(request: NextRequest) {
   try {
-    const client = await authenticateRequest(request);
+    const { client } = await flexibleAuth(request);
     const { searchParams } = new URL(request.url);
     const fileType = searchParams.get('type') as any;
 

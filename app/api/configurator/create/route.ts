@@ -1,13 +1,13 @@
-// Create configurator
+// Create configurator with flexible authentication
 import { NextRequest } from 'next/server';
-import { authenticateRequest } from '@/src/middleware/auth';
+import { flexibleAuth } from '@/src/middleware/flexible-auth';
 import { ConfiguratorService } from '@/src/services/configurator.service';
 import { success, fail, created } from '@/src/lib/response';
 import { canCreateConfigurator } from '@/src/config/permissions';
 
 export async function POST(request: NextRequest) {
   try {
-    const client = await authenticateRequest(request);
+    const { client } = await flexibleAuth(request);
     const body = await request.json();
 
     const { name, description, currency, currencySymbol, themeId } = body;
