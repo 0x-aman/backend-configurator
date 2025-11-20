@@ -24,6 +24,8 @@ import { toast } from "sonner";
 import Link from "next/link";
 import type { ApiResponse } from "@/src/types/api";
 import { Skeleton } from "@/components/ui/skeleton";
+import { env } from "@/src/config/env";
+import { openConfiguratorEditor } from "@/src/lib/use-editor";
 
 const NEXT_PUBLIC_APP_URL = process.env.NEXT_PUBLIC_APP_URL || "";
 
@@ -103,44 +105,6 @@ export default function EmbedPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleManageConfigurator = async (publicId: string) => {
-    try {
-      toast.loading("Opening editor...");
-
-      const tokenRes = await fetch("/api/configurator/generate-edit-token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ configuratorId: publicId }),
-      });
-
-      if (!tokenRes.ok) {
-        toast.error("Failed to create edit token");
-        return;
-      }
-
-      const tokenJson = await tokenRes.json();
-      const token = tokenJson?.data?.token;
-      if (!token) {
-        toast.error("No token returned");
-        return;
-      }
-
-      const host =
-        window.location.hostname === "localhost"
-          ? "http://localhost:8080"
-          : "https://exact-dupe-engine.vercel.app";
-
-      const url = `${host}/?admin=true&token=${encodeURIComponent(token)}`;
-      window.open(url, "_blank");
-      toast.success("Editor opened");
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to open editor");
-    } finally {
-      toast.dismiss();
-    }
-  };
-
   if (loading) {
     return <DashboardLoading />;
   }
@@ -157,12 +121,13 @@ export default function EmbedPage() {
         {configurators.map((cfg) => {
           const embedScript = `<!-- Konfigra Configurator: ${cfg.name} -->
 <div id="konfigra-${cfg.publicId}"></div>
+
 <script>
-  (function() {
+  (function () {
     var script = document.createElement('script');
-    script.src = '${NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "")}/embed.js';
+    script.src = 'https://embed-konfigra.vercel.app/embed.js';
+    script.setAttribute('data-public-id', '${cfg.publicId}');
     script.setAttribute('data-public-key', '${client?.publicKey}');
-    script.setAttribute('data-configurator-id', '${cfg.publicId}');
     script.async = true;
     document.body.appendChild(script);
   })();
@@ -185,7 +150,7 @@ export default function EmbedPage() {
                     variant="outline"
                     onClick={() =>
                       window.open(
-                        `http://localhost:8080/?apiKey=${cfg.publicId}`,
+                        `${env.EMBED_URL}/?publicId=${cfg.publicId}&&publicKey=${client?.publicKey}`,
                         "_blank"
                       )
                     }
@@ -195,7 +160,7 @@ export default function EmbedPage() {
                   </Button>
                   <Button
                     size="sm"
-                    onClick={() => handleManageConfigurator(cfg.publicId)}
+                    onClick={() => openConfiguratorEditor(cfg.publicId)}
                   >
                     <Settings className="h-4 w-4 mr-1" />
                     Manage

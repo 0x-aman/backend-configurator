@@ -59,6 +59,9 @@ export const env = {
 
   //edit token secret
   EDIT_TOKEN_SECRET: process.env.EDIT_TOKEN_SECRET,
+
+  //embed url
+  EMBED_URL: process.env.EMBED_URL || "https://embed-konfigra.vercel.app",
 };
 
 // ✅ Fixed: Strict environment validation

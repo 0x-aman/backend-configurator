@@ -38,6 +38,8 @@ import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { ApiResponse } from "@/src/types/api";
 import type { ClientProfile } from "@/src/types/auth";
+import { env } from "@/src/config/env";
+import { openConfiguratorEditor } from "@/src/lib/use-editor";
 
 interface DashboardStats {
   configurators: number;
@@ -62,6 +64,7 @@ export default function DashboardPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [formData, setFormData] = useState({ name: "", description: "" });
+  const [publicKey, setPublicKey] = useState<string | undefined>("");
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -77,6 +80,7 @@ export default function DashboardPage() {
           if (result.success && result.data) {
             const configList: ApiResponse = await configRes.json();
             const configs = configList.data || [];
+            setPublicKey(result.data.publicKey);
 
             setConfigurators(configs);
             setStats({
@@ -282,7 +286,7 @@ export default function DashboardPage() {
                     variant="outline"
                     onClick={() =>
                       window.open(
-                        `http://localhost:8080/?apiKey=${cfg.publicId}`,
+                        `${env.EMBED_URL}/?publicId=${cfg.publicId}&publicKey=${publicKey}`,
                         "_blank"
                       )
                     }
@@ -291,12 +295,7 @@ export default function DashboardPage() {
                   </Button>
                   <Button
                     size="sm"
-                    onClick={() =>
-                      window.open(
-                        `/dashboard/configurators/${cfg.id}`,
-                        "_blank"
-                      )
-                    }
+                    onClick={() => openConfiguratorEditor(cfg.publicId)}
                   >
                     <Settings className="h-4 w-4 mr-1" /> Manage
                   </Button>
