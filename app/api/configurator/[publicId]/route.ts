@@ -37,28 +37,38 @@ export async function GET(
       const originHost = new URL(embedOrigin).hostname;
       const allowed = client.allowedDomains || [];
 
-      // No configured domains → block to force setup
-      if (allowed.length === 0) {
-        const res = fail(
-          "No allowed domains configured. Please add your domain to allowed origins in your account settings.",
-          "NO_ALLOWED_ORIGINS",
-          403
-        );
-        return addCorsHeaders(res, request, ["*"]);
-      }
-
-      const isAllowed = allowed.some(
-        (domain: string) =>
-          originHost === domain || originHost.endsWith(`.${domain}`)
+      // ✅ Bypass for embed-konfigra.vercel.app and localhost:8080
+      const bypassDomains = ["embed-konfigra.vercel.app", "localhost"];
+      const isBypass = bypassDomains.some(
+        (domain) => originHost === domain || originHost.endsWith(`.${domain}`)
       );
 
-      if (!isAllowed) {
-        const res = fail(
-          `Unauthorized embed domain (${originHost}). Please add it to your allowed domains in account settings.`,
-          "ORIGIN_MISMATCH",
-          403
+      if (isBypass) {
+        // Skip domain validation for bypass domains
+      } else {
+        // No configured domains → block to force setup
+        if (allowed.length === 0) {
+          const res = fail(
+            "No allowed domains configured. Please add your domain to allowed origins in your account settings.",
+            "NO_ALLOWED_ORIGINS",
+            403
+          );
+          return addCorsHeaders(res, request, ["*"]);
+        }
+
+        const isAllowed = allowed.some(
+          (domain: string) =>
+            originHost === domain || originHost.endsWith(`.${domain}`)
         );
-        return addCorsHeaders(res, request, ["*"]);
+
+        if (!isAllowed) {
+          const res = fail(
+            `Unauthorized embed domain (${originHost}). Please add it to your allowed domains in account settings.`,
+            "ORIGIN_MISMATCH",
+            403
+          );
+          return addCorsHeaders(res, request, ["*"]);
+        }
       }
     } catch {
       const res = fail("Invalid origin format.", "INVALID_ORIGIN", 400);

@@ -61,6 +61,7 @@ export async function POST(req: Request) {
     const payload = {
       sub: user.client.id,
       configuratorId: configurator.id,
+      publicKey: user.client.publicKey,
       type: "configurator_edit",
     } as const;
 

@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
     const res = success({
       valid: true,
       publicId: configurator.publicId,
+      publicKey: String(payload.publicKey),
     });
 
     return addCorsHeaders(res, request);

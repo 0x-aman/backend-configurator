@@ -58,31 +58,19 @@ export async function POST(request: NextRequest) {
       return unauthorized("Ownership mismatch");
     }
 
-    // ✅ Enforce only one primary category per configurator
-    if (isPrimary === true) {
-      const existingPrimary = await prisma.category.findFirst({
-        where: {
-          configuratorId,
-          isPrimary: true,
-        },
-        select: { id: true },
-      });
-
-      if (existingPrimary) {
-        return fail(
-          "Primary category already exists. Please upgrade to add more.",
-          "PLAN_LIMIT",
-          403
-        );
-      }
-    }
+    // ✅ If this is the first category for the configurator, make it primary by default.
+    //      Otherwise new categories are NOT primary.
+    const existingCount = await prisma.category.count({
+      where: { configuratorId },
+    });
+    const isPrimaryForCreate = existingCount === 0;
 
     // ✅ Create category
     const category = await CategoryService.create(configuratorId, {
       name,
       categoryType,
       description,
-      isPrimary,
+      isPrimary: isPrimaryForCreate,
       isRequired,
     });
 

@@ -22,6 +22,7 @@ export async function verifyEditToken(token: string) {
 
     return {
       clientId: String(payload.sub),
+      publicKey: String(payload.publicKey),
       configuratorId: String(payload.configuratorId),
     };
   } catch {
