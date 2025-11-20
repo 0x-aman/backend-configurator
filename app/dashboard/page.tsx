@@ -318,8 +318,8 @@ export default function DashboardPage() {
               Give your configurator a name and description to get started.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
               <Label htmlFor="name">Configurator Name *</Label>
               <Input
                 id="name"
@@ -330,7 +330,7 @@ export default function DashboardPage() {
                 }
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
