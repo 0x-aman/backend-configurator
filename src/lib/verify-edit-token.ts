@@ -29,3 +29,46 @@ export async function verifyEditToken(token: string) {
     return null;
   }
 }
+
+
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { NextRequest } from "next/server";
+
+/**
+ * Try to resolve client context from:
+ * 1) NextAuth session (server session)
+ * 2) Authorization header Bearer <token>
+ * 3) body.token (if provided as string)
+ *
+ * Returns: { clientId, configuratorId? } or null
+ */
+export async function getClientFromRequest(request: NextRequest, bodyToken?: string) {
+  try {
+    // 1) Try NextAuth session
+    const session = await getServerSession(authOptions);
+    if (session && session.user && session.user.email) {
+      // fetch client by email
+      const client = await (await import("@/src/lib/prisma")).prisma.client.findUnique({
+        where: { email: session.user.email as string },
+      });
+      if (client) return { clientId: String(client.id) };
+    }
+  } catch (err) {
+    // session might not be available in non-next contexts
+  }
+
+  // 2) Try token from header
+  try {
+    const header = request.headers.get("authorization") || "";
+    const bearer = header.startsWith("Bearer ") ? header.split(" ")[1] : null;
+    const tokenToUse = bearer || bodyToken;
+    if (!tokenToUse) return null;
+
+    const payload: any = await verifyEditToken(tokenToUse);
+    if (!payload) return null;
+    return { clientId: payload.clientId, configuratorId: payload.configuratorId };
+  } catch (err) {
+    return null;
+  }
+}
