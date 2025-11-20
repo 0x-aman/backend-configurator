@@ -9,11 +9,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { token, ...themeData } = body;
 
-    if (!token) {
-      return fail("Edit token is required", "VALIDATION_ERROR", 400);
+    // Resolve client either from session or token (body token or Authorization header)
+    const clientCtx = await (await import("@/src/lib/verify-edit-token")).getClientFromRequest(request, token);
+    if (!clientCtx || !clientCtx.clientId) {
+      return unauthorized("Invalid or missing edit token or session");
     }
 
-    // 🔒 Verify token validity and decode client info
+    // Client context resolved
     const payload = await verifyEditToken(token);
 
     if (!payload || !payload.clientId) {
