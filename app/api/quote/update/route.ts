@@ -8,6 +8,10 @@ export async function PUT(request: NextRequest) {
   try {
     const client = await authenticateRequest(request);
     const body = await request.json();
+    const token = (typeof body === 'object' && body?.token) ? body.token : null;
+    const clientCtx = await (await import("@/src/lib/verify-edit-token")).getClientFromRequest(request, token);
+    if (!clientCtx || !clientCtx.clientId) return unauthorized("Invalid or missing edit token or session");
+
 
     const { id, ...data } = body;
 

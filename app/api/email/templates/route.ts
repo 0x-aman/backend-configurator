@@ -5,6 +5,10 @@ import { EmailTemplateService } from '@/src/services/email-template.service';
 import { success, fail } from '@/src/lib/response';
 
 export async function GET(request: NextRequest) {
+    const token = (typeof body === 'object' && body?.token) ? body.token : null;
+    const clientCtx = await (await import("@/src/lib/verify-edit-token")).getClientFromRequest(request, token);
+    if (!clientCtx || !clientCtx.clientId) return unauthorized("Invalid or missing edit token or session");
+
   try {
     const client = await authenticateRequest(request);
     const { searchParams } = new URL(request.url);

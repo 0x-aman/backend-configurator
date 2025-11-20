@@ -13,6 +13,10 @@ export async function POST(request: NextRequest) {
     const client = await validatePublicKey(request);
 
     const body = await request.json();
+    const token = (typeof body === 'object' && body?.token) ? body.token : null;
+    const clientCtx = await (await import("@/src/lib/verify-edit-token")).getClientFromRequest(request, token);
+    if (!clientCtx || !clientCtx.clientId) return unauthorized("Invalid or missing edit token or session");
+
     const {
       configuratorId,
       customerEmail,
