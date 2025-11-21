@@ -28,7 +28,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileText, Search, Download, Eye, Filter } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  FileText,
+  Search,
+  Download,
+  Eye,
+  Filter,
+  Mail,
+  Phone,
+  Building,
+  Calendar,
+  Package,
+  DollarSign,
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface Quote {
@@ -36,9 +56,21 @@ interface Quote {
   quoteCode: string;
   customerEmail: string;
   customerName: string | null;
+  customerPhone: string | null;
+  customerCompany: string | null;
   totalPrice: number;
+  subtotal?: number;
+  taxAmount?: number;
+  taxRate?: number;
   status: string;
   createdAt: string;
+  selectedOptions: any;
+  configuration?: any;
+  title?: string;
+  internalNotes?: string;
+  customerNotes?: string;
+  validUntil?: string;
+  emailSentAt?: string;
 }
 
 export default function QuotesPage() {
@@ -46,6 +78,9 @@ export default function QuotesPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   useEffect(() => {
     const fetchQuotes = async () => {
@@ -53,7 +88,7 @@ export default function QuotesPage() {
         const response = await fetch("/api/quote/list");
         if (response.ok) {
           const data = await response.json();
-          setQuotes(data.quotes || []);
+          setQuotes(data.data || []);
         }
       } catch (error) {
         console.error("Failed to fetch quotes:", error);
@@ -99,6 +134,70 @@ export default function QuotesPage() {
 
   const handleDownloadQuote = async (quoteCode: string) => {
     toast.info("Quote download feature coming soon!");
+  };
+
+  const handleOpenDetails = async (quote: Quote) => {
+    setSelectedQuote(quote);
+    setIsModalOpen(true);
+  };
+
+  const handleSendEmail = async () => {
+    if (!selectedQuote) return;
+
+    setIsSendingEmail(true);
+    try {
+      const response = await fetch("/api/email/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: selectedQuote.customerEmail,
+          subject: `Quote ${selectedQuote.quoteCode} - Product Configuration`,
+          html: `
+            <h2>Your Quote Details</h2>
+            <p>Dear ${selectedQuote.customerName || "Customer"},</p>
+            <p>Thank you for your interest. Here are your quote details:</p>
+            <ul>
+              <li><strong>Quote Code:</strong> ${selectedQuote.quoteCode}</li>
+              <li><strong>Total Amount:</strong> €${Number(selectedQuote.totalPrice).toFixed(2)}</li>
+              <li><strong>Status:</strong> ${selectedQuote.status}</li>
+            </ul>
+            <p>View your full quote here: <a href="${window.location.origin}/quote/${selectedQuote.quoteCode}">View Quote</a></p>
+            <p>Best regards,<br/>Your Team</p>
+          `,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success("Email sent successfully!");
+        // Update quote status if needed
+        await fetch("/api/quote/update", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: selectedQuote.id,
+            status: "SENT",
+            emailSentAt: new Date().toISOString(),
+          }),
+        });
+        // Refresh quotes
+        const quotesResponse = await fetch("/api/quote/list");
+        if (quotesResponse.ok) {
+          const data = await quotesResponse.json();
+          setQuotes(data.data || []);
+        }
+      } else {
+        toast.error("Failed to send email");
+      }
+    } catch (error) {
+      console.error("Email send error:", error);
+      toast.error("Failed to send email");
+    } finally {
+      setIsSendingEmail(false);
+    }
   };
 
   if (loading) {
@@ -296,6 +395,14 @@ export default function QuotesPage() {
                           <Button
                             size="sm"
                             variant="ghost"
+                            onClick={() => handleOpenDetails(quote)}
+                            data-testid={`details-quote-${quote.quoteCode}`}
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             onClick={() => handleViewQuote(quote.quoteCode)}
                             data-testid={`view-quote-${quote.quoteCode}`}
                           >
@@ -319,6 +426,217 @@ export default function QuotesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Quote Details Modal */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Quote Details</DialogTitle>
+            <DialogDescription>
+              Complete information for quote {selectedQuote?.quoteCode}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedQuote && (
+            <div className="space-y-6">
+              {/* Customer Information */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <Building className="h-5 w-5" />
+                  Customer Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Name</p>
+                    <p className="font-medium">
+                      {selectedQuote.customerName || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Email</p>
+                    <p className="font-medium flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      {selectedQuote.customerEmail}
+                    </p>
+                  </div>
+                  {selectedQuote.customerPhone && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Phone</p>
+                      <p className="font-medium flex items-center gap-2">
+                        <Phone className="h-4 w-4" />
+                        {selectedQuote.customerPhone}
+                      </p>
+                    </div>
+                  )}
+                  {selectedQuote.customerCompany && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Company</p>
+                      <p className="font-medium">
+                        {selectedQuote.customerCompany}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Quote Information */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Quote Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Quote Code</p>
+                    <p className="font-mono font-medium">
+                      {selectedQuote.quoteCode}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Status</p>
+                    <Badge variant={getStatusVariant(selectedQuote.status)}>
+                      {selectedQuote.status}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Created Date
+                    </p>
+                    <p className="font-medium flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      {new Date(selectedQuote.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  {selectedQuote.emailSentAt && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        Email Sent
+                      </p>
+                      <p className="font-medium">
+                        {new Date(selectedQuote.emailSentAt).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                  {selectedQuote.validUntil && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        Valid Until
+                      </p>
+                      <p className="font-medium">
+                        {new Date(
+                          selectedQuote.validUntil
+                        ).toLocaleDateString()}
+                      </p>
+                    </div>
+                  )}
+                  {selectedQuote.title && (
+                    <div className="md:col-span-2">
+                      <p className="text-sm text-muted-foreground">Title</p>
+                      <p className="font-medium">{selectedQuote.title}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Pricing Breakdown */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <DollarSign className="h-5 w-5" />
+                  Pricing Details
+                </h3>
+                <div className="p-4 bg-muted rounded-lg space-y-2">
+                  {selectedQuote.subtotal && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span className="font-medium">
+                        €{Number(selectedQuote.subtotal).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  {selectedQuote.taxAmount && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        Tax{" "}
+                        {selectedQuote.taxRate
+                          ? `(${Number(selectedQuote.taxRate * 100).toFixed(2)}%)`
+                          : ""}
+                      </span>
+                      <span className="font-medium">
+                        €{Number(selectedQuote.taxAmount).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                    <span>Total</span>
+                    <span>€{Number(selectedQuote.totalPrice).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Selected Options */}
+              {selectedQuote.selectedOptions && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <Package className="h-5 w-5" />
+                    Selected Options
+                  </h3>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <pre className="text-sm overflow-x-auto whitespace-pre-wrap">
+                      {JSON.stringify(selectedQuote.selectedOptions, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {/* Notes */}
+              {(selectedQuote.customerNotes || selectedQuote.internalNotes) && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Notes</h3>
+                  {selectedQuote.customerNotes && (
+                    <div className="mb-3">
+                      <p className="text-sm text-muted-foreground mb-1">
+                        Customer Notes
+                      </p>
+                      <p className="p-3 bg-muted rounded-lg">
+                        {selectedQuote.customerNotes}
+                      </p>
+                    </div>
+                  )}
+                  {selectedQuote.internalNotes && (
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        Internal Notes
+                      </p>
+                      <p className="p-3 bg-muted rounded-lg">
+                        {selectedQuote.internalNotes}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => handleViewQuote(selectedQuote?.quoteCode || "")}
+              data-testid="modal-view-quote-btn"
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              View Public Quote
+            </Button>
+            <Button
+              onClick={handleSendEmail}
+              disabled={isSendingEmail}
+              data-testid="modal-send-email-btn"
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              {isSendingEmail ? "Sending..." : "Send Email"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
